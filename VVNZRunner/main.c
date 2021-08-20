@@ -7,12 +7,6 @@
 
 //#define TEST_BUILD
 
-static tai_hook_ref_t hook_ref[3];
-static SceUID hook_id[3];
-
-int(*sceVeneziaSuspend)();
-int(*sceVeneziaResume)();
-int(*sceVeneziaResume2)();
 int(*sceVeneziaEventHandler)(int resume, int eventid, void *args, void *opt);
 
 #define SCE_SYSMEM_VENEZIA_PARAM_IMAGE 8
@@ -143,7 +137,7 @@ int module_start(SceSize args, const void * argp)
 	if (taiGetModuleInfoForKernel(KERNEL_PID, "SceCodecEngineWrapper", &info) < 0)
 		return SCE_KERNEL_START_SUCCESS;
 
-	module_get_offset(KERNEL_PID, info.modid, 0, 0x8c | 1, (uintptr_t *)&sceVeneziaEventHandler);
+	module_get_offset(KERNEL_PID, info.modid, 0, 0x8C | 1, (uintptr_t *)&sceVeneziaEventHandler);
 
 	s_vnzCodeRunSema = sceKernelCreateSema("SceVeneziaCodeRunSema", 0, 0, 1, SCE_NULL);
 	if (s_vnzCodeRunSema <= 0)
