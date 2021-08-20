@@ -101,7 +101,7 @@ int vnzBridgeMemcpyFromSpram(void *dst, unsigned int size, unsigned int spramOff
 	return sceKernelMemcpyKernelToUser(dst, VADDR_VENEZIA_SPRAM + spramOffset, size);
 }
 
-unsigned int vnzBridgeGetSpramValue(unsigned int offset)
+int vnzBridgeGetSpramValue(unsigned int offset)
 {
 	if (offset > SPRAM_MEMSIZE)
 		return -3;
