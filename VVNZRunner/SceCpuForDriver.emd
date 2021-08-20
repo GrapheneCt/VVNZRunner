@@ -1,0 +1,8 @@
+emd: 1
+
+Library: SceCpuForDriver attr: auto_export
+Library: SceCpuForDriver version: 1
+Library: SceCpuForDriver stubfile: "SceCpuForDriver_stub"
+Library: SceCpuForDriver nidsuffix: ""
+Library: SceCpuForDriver libnamenid: 0x40ECDB0E
+Library: SceCpuForDriver function: sceKernelL2cacheClean nidvalue: 0xE813EBB2

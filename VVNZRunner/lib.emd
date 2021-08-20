@@ -1,0 +1,19 @@
+Module: VVNZRunner major_version: 1 minor_version: 0
+sceModuleInfo_type: 6
+module_function: module_start localname: module_start
+module_function: module_stop localname: module_stop
+Library: VVNZRunner attr: auto_export
+Library: VVNZRunner attr: syscall_export
+Library: VVNZRunner version: 1
+Library: VVNZRunner stubfile: "VVNZRunner_stub"
+Library: VVNZRunner nidsuffix: ""
+Library: VVNZRunner function: vnz_test_dump_image
+Library: VVNZRunner function: vnz_test_get_clock
+Library: VVNZRunner function: vnz_test_gate_enable
+Library: VVNZRunner function: vnz_test_gate_disable
+
+Library: VVNZRunner function: vnzBridgeInject
+Library: VVNZRunner function: vnzBridgeExec
+Library: VVNZRunner function: vnzBridgeGetSpramValue
+Library: VVNZRunner function: vnzBridgeMemcpyToSpram
+Library: VVNZRunner function: vnzBridgeMemcpyFromSpram

@@ -1,0 +1,8 @@
+emd: 1
+
+Library: SceSysrootForDriver attr: auto_export
+Library: SceSysrootForDriver version: 1
+Library: SceSysrootForDriver stubfile: "SceSysrootForDriver_stub"
+Library: SceSysrootForDriver nidsuffix: ""
+Library: SceSysrootForDriver libnamenid: 0x2ED7F97A
+Library: SceSysrootForDriver function: sceKernelSysrootGetVeneziaRunner nidvalue: 0x49843C16

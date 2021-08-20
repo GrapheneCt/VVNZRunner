@@ -1,0 +1,12 @@
+emd: 1
+
+Library: ScePervasiveForDriver attr: auto_export
+Library: ScePervasiveForDriver version: 1
+Library: ScePervasiveForDriver stubfile: "ScePervasiveForDriver_stub"
+Library: ScePervasiveForDriver nidsuffix: ""
+Library: ScePervasiveForDriver libnamenid: 0xE692C727
+Library: ScePervasiveForDriver function: scePervasiveVeneziaResetDisable nidvalue: 0xFB01A2DD
+Library: ScePervasiveForDriver function: scePervasiveVeneziaResetEnable nidvalue: 0xA7E64C6F
+Library: ScePervasiveForDriver function: scePervasiveVeneziaClockGateDisable nidvalue: 0xD58E3A30
+Library: ScePervasiveForDriver function: scePervasiveVeneziaClockGateEnable nidvalue: 0xE0711D42
+Library: ScePervasiveForDriver function: scePervasiveVeneziaSetClock nidvalue: 0x725B4F59

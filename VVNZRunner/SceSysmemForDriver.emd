@@ -1,0 +1,8 @@
+emd: 1
+
+Library: SceSysmemForDriver attr: auto_export
+Library: SceSysmemForDriver version: 1
+Library: SceSysmemForDriver stubfile: "SceSysmemForDriver_stub"
+Library: SceSysmemForDriver nidsuffix: ""
+Library: SceSysmemForDriver libnamenid: 0x6F25E18A
+Library: SceSysmemForDriver function: sceSysmemGetVeneziaParam nidvalue: 0x89475192

@@ -1,0 +1,15 @@
+emd: 1
+
+Library: SceCodecEngineWrapperForDriver attr: auto_export
+Library: SceCodecEngineWrapperForDriver version: 1
+Library: SceCodecEngineWrapperForDriver stubfile: "SceCodecEngineWrapperForDriver_stub"
+Library: SceCodecEngineWrapperForDriver nidsuffix: ""
+Library: SceCodecEngineWrapperForDriver libnamenid: 0x51593F20
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperUnlockProcessSuspendCore nidvalue: 0x091B0231
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperConvertPhysicalToVirtual nidvalue: 0x1C2BC9F7
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperCallGenericThunk nidvalue: 0x391BD4FD
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperConvertVirtualToPhysical nidvalue: 0x47AED6FF
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperGetVThreadProcessingResource nidvalue: 0x6A1184EA
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperIsProcessSuspended nidvalue: 0x7492DE05
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperLockProcessSuspendCore nidvalue: 0xCB8703D8
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperMemcpyChain nidvalue: 0xD1F94D9D
