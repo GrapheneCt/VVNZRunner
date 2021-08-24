@@ -38,7 +38,7 @@ typedef struct SceSysmemVeneziaImageParam {
 } SceSysmemVeneziaImageParam;
 
 static unsigned char s_injectCodeJumpDefault[4] = {
-	0xC8, 0xD8, 0x00, 0x80
+	0x98, 0xDA, 0x37, 0x80
 };
 
 static unsigned char s_origCodeJump[4];
@@ -68,7 +68,7 @@ int vnzBridgeInject(void *mepCodeJump, unsigned int mepCodeOffset, void *mepCode
 		sceKernelMemcpyUserToKernel(s_injectCodeJump, mepCodeJump, 4);
 
 	if (!mepCodeOffset)
-		s_requestedCodeOffset = 0x18; // as in s_injectCodeJumpDefault
+		s_requestedCodeOffset = 0x3752; // as in s_injectCodeJumpDefault
 	else
 		s_requestedCodeOffset = mepCodeOffset;
 
@@ -115,16 +115,17 @@ int vnzRunnerThread(SceSize args, void *argp)
 {
 	while (s_keepAlive) {
 		sceKernelWaitSema(s_vnzCodeRunSema, 1, SCE_NULL);
-
+		sceDebugPrintf("begin\n");
 		sceVeneziaEventHandler(0, 0x400e, NULL, NULL);
 
 		memcpy(VADDR_VENEZIA_IMAGE, s_injectCodeJump, 4);
 		memcpy(VADDR_VENEZIA_IMAGE + s_requestedCodeOffset, s_injectCode, s_requestedCodeSize);
-
+		sceDebugPrintf("mid\n");
 		sceVeneziaEventHandler(1, 0x1000e, NULL, NULL);
 
 		memcpy(VADDR_VENEZIA_IMAGE, s_origCodeJump, 4);
 		memcpy(VADDR_VENEZIA_IMAGE + s_requestedCodeOffset, s_origCode, s_requestedCodeSize);
+		sceDebugPrintf("end\n");
 	}
 
 	return sceKernelExitDeleteThread(0);
