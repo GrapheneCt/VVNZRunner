@@ -262,7 +262,7 @@ int main()
 	return 0;
 }
 
-// Impl for math_neon
+// Impl from math_neon
 const float __powf_rng[2] = {
 	1.442695041f,
 	0.693147180f
