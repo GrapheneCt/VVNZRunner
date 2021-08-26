@@ -14,14 +14,15 @@ endif()
 project(mep_sample ASM)
 project(mep_sample C)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -O3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
 
 add_executable(${PROJECT_NAME}
   src/main.c
 )
 
 target_link_libraries(${PROJECT_NAME}
+  gcc
 )
 
 set_target_properties(mep_sample
