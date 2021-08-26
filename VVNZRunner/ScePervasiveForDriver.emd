@@ -10,3 +10,6 @@ Library: ScePervasiveForDriver function: scePervasiveVeneziaResetEnable nidvalue
 Library: ScePervasiveForDriver function: scePervasiveVeneziaClockGateDisable nidvalue: 0xD58E3A30
 Library: ScePervasiveForDriver function: scePervasiveVeneziaClockGateEnable nidvalue: 0xE0711D42
 Library: ScePervasiveForDriver function: scePervasiveVeneziaSetClock nidvalue: 0x725B4F59
+
+Library: ScePervasiveForDriver function: ScePervasiveForDriver_28731EC5 nidvalue: 0x28731EC5
+Library: ScePervasiveForDriver function: ScePervasiveForDriver_2EEBE9AE nidvalue: 0x2EEBE9AE

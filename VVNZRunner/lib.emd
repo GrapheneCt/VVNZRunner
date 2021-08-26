@@ -13,7 +13,9 @@ Library: VVNZRunner function: vnz_test_gate_enable
 Library: VVNZRunner function: vnz_test_gate_disable
 
 Library: VVNZRunner function: vnzBridgeInject
+Library: VVNZRunner function: vnzBridgeRestore
 Library: VVNZRunner function: vnzBridgeExec
 Library: VVNZRunner function: vnzBridgeGetSpramValue
 Library: VVNZRunner function: vnzBridgeMemcpyToSpram
 Library: VVNZRunner function: vnzBridgeMemcpyFromSpram
+Library: VVNZRunner function: vnzBridgeMapSpram
