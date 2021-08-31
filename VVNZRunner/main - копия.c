@@ -11,8 +11,6 @@
 
 int(*_sceVeneziaEventHandler)(int resume, int eventid, void *args, void *opt);
 int(*_sceAvcodecMapMemoryToVenezia)(void **vnzPaddr, const void *vaddr, unsigned int size, SceKernelMemoryRefPerm perm, unsigned int mode, unsigned int plsAllowVnz);
-int(*_sceAvcodecJpegEncoderThunkBegin)();
-int(*_sceAvcodecJpegEncoderThunkEnd)();
 
 #define ALIGN(x, a)	(((x) + ((a) - 1)) & ~((a) - 1))
 
@@ -32,7 +30,8 @@ int(*_sceAvcodecJpegEncoderThunkEnd)();
 #define SPRAM_MEMSIZE			0x2500000
 
 #define INJECT_CODE_SIZE_LIMIT	0x1000
-#define INJECT_CODE_BASE_OFFSET	0x1F988
+//#define INJECT_CODE_BASE_OFFSET	0x19BB6
+#define INJECT_CODE_BASE_OFFSET	0x19A3C
 
 #define scePUIDOpenByGUID			sceKernelCreateUserUid
 #define scePUIDClose				sceKernelDeleteUserUid
@@ -40,10 +39,10 @@ int(*_sceAvcodecJpegEncoderThunkEnd)();
 #define sceKernelVARangeToPAVector	sceKernelGetPaddrList
 
 typedef struct SceCodecEngineWrapperThunkArg {
-	void *pVThreadProcessingResource;
-	void *userArg2;
-	void *userArg3;
-	void *userArg4;
+	int processingResource;
+	int a2;
+	int a3;
+	int a4;
 } SceCodecEngineWrapperThunkArg;
 
 typedef struct SceSysmemVeneziaImageParam {
@@ -71,7 +70,6 @@ typedef struct SceKernelPAVector { // size is 0x14 on FW 0.990
 } SceKernelPAVector;
 
 int sceCodecEngineWrapperCallGenericThunk(unsigned int id, SceCodecEngineWrapperThunkArg *arg, void *beginCallback, void *endCallback);
-void *sceCodecEngineWrapperGetVThreadProcessingResource(unsigned int key);
 int sceCodecEngineWrapperLockProcessSuspendCore();
 int sceCodecEngineWrapperUnlockProcessSuspendCore();
 
@@ -97,11 +95,58 @@ void _vnzDoRestore()
 
 void _vnzDoInject()
 {
-#define INJECTION_BASE_INFO	(VADDR_VENEZIA_SPRAM + 0x1400)
-	*(unsigned int *)(INJECTION_BASE_INFO) = s_requestedCodeOffset | 0x800000;
-#undef INJECTION_BASE_INFO
 	memcpy(VADDR_VENEZIA_IMAGE + INJECT_CODE_BASE_OFFSET, s_injectCodeJump, 4);
 	memcpy(VADDR_VENEZIA_IMAGE + s_requestedCodeOffset, s_injectMem + s_requestedCodeSize, s_requestedCodeSize);
+}
+
+SceUID vnzBridgeMapSpram()
+{
+	SceKernelPAVector list;
+	SceKernelPARange range;
+	SceUID pid = sceKernelGetProcessId();
+
+	range.addr = PADDR_VENEZIA_SPRAM;
+	range.size = SPRAM_MAP_SIZE;
+
+	list.size = sizeof(SceKernelPAVector);
+	list.pRanges_size = 1;
+	list.nDataInVector = 1;
+	list.count = 1;
+	list.pRanges = &range;
+
+	// Start mapping to userland
+	SceKernelAllocMemBlockKernelOpt opt;
+	memset(&opt, 0, sizeof(SceKernelAllocMemBlockKernelOpt));
+
+	opt.size = sizeof(SceKernelAllocMemBlockKernelOpt);
+	opt.attr = SCE_KERNEL_ALLOC_MEMBLOCK_ATTR_HAS_PID | SCE_KERNEL_ALLOC_MEMBLOCK_ATTR_HAS_PADDR_LIST;
+	opt.pid = pid;
+	opt.paddr_list = &list;
+
+	SceUID memid = sceKernelAllocMemBlock("SceVeneziaSpramMap", SCE_KERNEL_MEMBLOCK_TYPE_USER_RW, SPRAM_MAP_SIZE, &opt);
+
+	s_userSpramMap = scePUIDOpenByGUID(pid, memid);
+
+	return s_userSpramMap;
+}
+
+void _vnzBridgeDoUnmapSpram(SceUID pid, SceUID userMemid)
+{
+	if (userMemid == SCE_UID_INVALID_UID)
+		return;
+
+	SceUID memid = scePUIDtoGUID(pid, userMemid);
+
+	scePUIDClose(pid, userMemid);
+
+	s_userSpramMap = SCE_UID_INVALID_UID;
+
+	sceKernelFreeMemBlock(memid);
+}
+
+void vnzBridgeUnmapSpram(SceUID userMemid)
+{
+	_vnzBridgeDoUnmapSpram(sceKernelGetProcessId(), userMemid);
 }
 
 int vnzBridgeMapMemory(void *vaddr, unsigned int size, void **vnzPaddr)
@@ -194,35 +239,18 @@ int vnzBridgeInject(void *mepCodeJump, unsigned int mepCodeOffset, void *mepCode
 	return SCE_OK;
 }
 
-int vnzBridgeExec(void *pUserArg, unsigned int userArgSize)
+int vnzBridgeExec()
 {
 	SceCodecEngineWrapperThunkArg thunkArg;
 	int ret = 0;
-	unsigned char hasUserArg = 0;
-	char userArg[0x180];
-	void *cbBegin = NULL;
-	void *cbEnd = NULL;
-
-	memset(&thunkArg, 0, sizeof(SceCodecEngineWrapperThunkArg));
-
-	if (pUserArg) {
-		if (userArgSize > 0x180)
-			return -1;
-
-		memset(userArg, 0, sizeof(userArg));
-		sceKernelMemcpyUserToKernel(userArg, pUserArg, userArgSize);
-		cbBegin = _sceAvcodecJpegEncoderThunkBegin;
-		cbEnd = _sceAvcodecJpegEncoderThunkEnd;
-		thunkArg.userArg2 = userArg;
-	}
 
 	ret = sceCodecEngineWrapperLockProcessSuspendCore();
 	if (ret < 0)
 		return ret;
 
-	thunkArg.pVThreadProcessingResource = sceCodecEngineWrapperGetVThreadProcessingResource(0);
+	memset(&thunkArg, 0, sizeof(SceCodecEngineWrapperThunkArg));
 
-	ret = sceCodecEngineWrapperCallGenericThunk(0x1C5, &thunkArg, cbBegin, cbEnd);
+	ret = sceCodecEngineWrapperCallGenericThunk(0xB3, &thunkArg, NULL, NULL);
 
 	sceCodecEngineWrapperUnlockProcessSuspendCore();
 
@@ -271,9 +299,11 @@ int procEvHandler(SceUID pid, int event_type, SceProcEventInvokeParam1 *a3, int 
 
 int procEvExitHandler(SceUID pid, SceProcEventInvokeParam1 *a2, int a3)
 {
+	//vnzBridgeRestore();
 	if (s_registeredPid == pid) {
 		vnzBridgeRestore();
 	}
+	//_vnzBridgeDoUnmapSpram(pid, s_userSpramMap);
 
 	return SCE_OK;
 }
@@ -294,8 +324,6 @@ int module_start(SceSize args, const void * argp)
 		return SCE_KERNEL_START_SUCCESS;
 
 	module_get_offset(KERNEL_PID, info.modid, 0, 0x89C0 | 1, (uintptr_t *)&_sceAvcodecMapMemoryToVenezia);
-	module_get_offset(KERNEL_PID, info.modid, 0, 0xAA64 | 1, (uintptr_t *)&_sceAvcodecJpegEncoderThunkBegin);
-	module_get_offset(KERNEL_PID, info.modid, 0, 0xAA4C | 1, (uintptr_t *)&_sceAvcodecJpegEncoderThunkEnd);
 
 	SceProcEventHandler handler;
 	memset(&handler, 0, sizeof(SceProcEventHandler));

@@ -11,13 +11,14 @@ if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
   endif()
 endif()
 
-project(mep_sample ASM)
-project(mep_sample C)
+project(ime_sample ASM)
+project(ime_sample C)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -O3")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O3")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -flto -fno-toplevel-reorder -mivc2 -mcop -mall-opts -mrepeat -O3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -flto -fno-toplevel-reorder -mivc2 -mcop -mall-opts -mrepeat -O3")
 
 add_executable(${PROJECT_NAME}
+  src/boot.c
   src/main.c
 )
 
@@ -25,6 +26,6 @@ target_link_libraries(${PROJECT_NAME}
   gcc
 )
 
-set_target_properties(mep_sample
+set_target_properties(ime_sample
   PROPERTIES LINK_FLAGS "-nostdlib"
 )

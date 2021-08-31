@@ -1,39 +1,52 @@
+#include "vthread.h"
+
 #define VENEZIA_SPRAM_ADDR		0xF1840000
 #define SPRAM_MEMSIZE			0x2500000
-#define SPRAM_SAFE_OFFSET		0x1400
+#define SPRAM_SAFE_OFFSET		0x1404
+#define SPRAM_VTHREAD_MAILBOX_OFFSET	0x1408
 #define SPRAM_USE_BASE			(VENEZIA_SPRAM_ADDR + SPRAM_SAFE_OFFSET)
+#define SPRAM_MAILBOX_BASE		(VENEZIA_SPRAM_ADDR + SPRAM_VTHREAD_MAILBOX_OFFSET)
+
+#define VTHREAD_STATE_READY		1
+#define VTHREAD_STATE_FINISHED	2
 
 void *vnzMemcpyToSpram(void *src, unsigned int size, unsigned int spramOffset);
 void *vnzMemcpyFromSpram(void *dst, unsigned int size, unsigned int spramOffset);
 void *memcpy(void *s1, const void *s2, unsigned int n);
-void main();
+int main();
 void writeAnswer(float res);
 float powf_c(float x, float n);
 
-void _start()
+void myEntry(void *arg)
 {
-	asm volatile(
-		"bsr main		\n"
-		".tohalt:		\n"
-		"halt			\n"
-		"bra .tohalt	\n"
-		);
+	float a1 = 1.0f;
+	float a2 = 1.5f;
+	float res = 0.0f;
+
+	while (a1 < 80.0f) {
+		res = powf_c(a1, a2);
+		a1 += 0.00001f;
+	}
+
+	return;
 }
 
-void main()
+int main(void *pVThreadProcessingResource, void *pUserArg)
 {
-	float a1 = *(float *)(SPRAM_USE_BASE);
-	float a2 = *(float *)(SPRAM_USE_BASE + 4);
+	int ret = 0;
+	VnzVThreadContext thrdCtx;
 
-	writeAnswer(powf_c(a1, a2));
+	thrdCtx = vnzCreateVThreadContext(1, pVThreadProcessingResource);
+
+	if (thrdCtx != 0) {
+		ret = vnzCreateStartVThread(thrdCtx, 0, myEntry, 0, 0, 0, 0);
+		vnzDeleteVThreadContext(thrdCtx);
+	}
+
+	*(int *)(SPRAM_MAILBOX_BASE) = VTHREAD_STATE_FINISHED;
+
+	return 0;
 }
-
-void writeAnswer(float res)
-{
-	*(float *)(SPRAM_USE_BASE + 8) = res;
-	//vnzMemcpyToSpram(&res, 4, SPRAM_SAFE_OFFSET);
-}
-
 
 // Impl from math_neon
 const float __powf_rng[2] = {
@@ -129,17 +142,4 @@ void *vnzMemcpyFromSpram(void *dst, unsigned int size, unsigned int spramOffset)
 		return 0;
 
 	return memcpy(dst, VENEZIA_SPRAM_ADDR + spramOffset, size);
-}
-
-void *memcpy(void *s1, const void *s2, unsigned int n)
-{
-	char * dest = (char *)s1;
-	const char * src = (const char *)s2;
-
-	while (n--)
-	{
-		*dest++ = *src++;
-	}
-
-	return s1;
 }*/

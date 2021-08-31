@@ -47,9 +47,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <AdditionalIncludeDirectories>D:\Program Files (x86)\SCE\PSP2 SDKs\3.570\target\include\vdsuite\user;D:\Program Files (x86)\SCE\PSP2 SDKs\3.570\target\include\vdsuite\common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <OptimizationLevel>Level0</OptimizationLevel>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>-lVVNZRunner_stub;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>-lVVNZRunner_stub;-lSceCodecEngine_stub;-lSceCodecEngineWrapper_stub;-lSceAudiodec_stub;-lSceCodecEngineUser_stub;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SCE_PSP2_SDK_DIR)\target\lib\vdsuite;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -66,6 +67,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="mep_code.h" />
   </ItemGroup>
   <Import Condition="'$(ConfigurationType)' == 'Makefile' and Exists('$(VCTargetsPath)\Platforms\$(Platform)\SCE.Makefile.$(Platform).targets')" Project="$(VCTargetsPath)\Platforms\$(Platform)\SCE.Makefile.$(Platform).targets" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

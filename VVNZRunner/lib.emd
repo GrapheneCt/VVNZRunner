@@ -19,3 +19,6 @@ Library: VVNZRunner function: vnzBridgeGetSpramValue
 Library: VVNZRunner function: vnzBridgeMemcpyToSpram
 Library: VVNZRunner function: vnzBridgeMemcpyFromSpram
 Library: VVNZRunner function: vnzBridgeMapSpram
+Library: VVNZRunner function: vnzBridgeUnmapSpram
+Library: VVNZRunner function: vnzBridgeMapMemory
+Library: VVNZRunner function: vnzBridgeUnmapMemory
