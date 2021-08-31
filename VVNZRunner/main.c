@@ -255,6 +255,16 @@ int vnzBridgeGetSpramValue(unsigned int offset)
 	return value;
 }
 
+int vnzBridgeGetVeneziaClockFrequency()
+{
+	return scePowerGetVeneziaClockFrequency();
+}
+
+int vnzBridgeSetVeneziaClockFrequency(int clock)
+{
+	return scePowerSetVeneziaClockFrequency(clock);
+}
+
 int procEvHandler(SceUID pid, int event_type, SceProcEventInvokeParam1 *a3, int a4)
 {
 	if (event_type == 0x1000 && s_registeredPid == pid) {
@@ -318,11 +328,6 @@ int module_stop(SceSize args, const void * argp)
 }
 
 #ifdef TEST_BUILD
-int vnz_test_get_clock()
-{
-	return scePowerGetVeneziaClockFrequency();
-}
-
 int vnz_test_gate_enable()
 {
 	return scePervasiveVeneziaClockGateEnable();
@@ -353,11 +358,6 @@ int vnz_test_dump_image()
 	return sz;
 }
 #else
-int vnz_test_get_clock()
-{
-	return 333;
-}
-
 int vnz_test_gate_enable()
 {
 	return SCE_OK;

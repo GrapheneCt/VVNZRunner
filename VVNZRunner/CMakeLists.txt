@@ -52,6 +52,11 @@ VDSuiteCreateStubs(stubs lib.emd
     VVNZRunner_stub
 )
 
+VDSuiteCreateStubs(vitasdk_stubs lib.yml
+  LIBRARIES
+    VVNZRunner_vitasdk_stub
+)
+
 add_library("${PROJECT_NAME}.elf" MODULE
   main.c
   lib.emd

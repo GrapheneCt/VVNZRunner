@@ -8,7 +8,6 @@ Library: VVNZRunner version: 1
 Library: VVNZRunner stubfile: "VVNZRunner_stub"
 Library: VVNZRunner nidsuffix: ""
 Library: VVNZRunner function: vnz_test_dump_image
-Library: VVNZRunner function: vnz_test_get_clock
 Library: VVNZRunner function: vnz_test_gate_enable
 Library: VVNZRunner function: vnz_test_gate_disable
 
@@ -18,7 +17,8 @@ Library: VVNZRunner function: vnzBridgeExec
 Library: VVNZRunner function: vnzBridgeGetSpramValue
 Library: VVNZRunner function: vnzBridgeMemcpyToSpram
 Library: VVNZRunner function: vnzBridgeMemcpyFromSpram
-Library: VVNZRunner function: vnzBridgeMapSpram
-Library: VVNZRunner function: vnzBridgeUnmapSpram
 Library: VVNZRunner function: vnzBridgeMapMemory
 Library: VVNZRunner function: vnzBridgeUnmapMemory
+Library: VVNZRunner function: vnzBridgeGetVeneziaClockFrequency
+Library: VVNZRunner function: vnzBridgeSetVeneziaClockFrequency
+
