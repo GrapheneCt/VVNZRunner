@@ -7,7 +7,7 @@
 #include <kernel/proc_event.h>
 #include <taihen.h>
 
-#define TEST_BUILD
+//#define TEST_BUILD
 
 int(*_sceVeneziaEventHandler)(int resume, int eventid, void *args, void *opt);
 int(*_sceAvcodecMapMemoryToVenezia)(void **vnzPaddr, const void *vaddr, unsigned int size, SceKernelMemoryRefPerm perm, unsigned int mode, unsigned int plsAllowVnz);

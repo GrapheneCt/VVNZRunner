@@ -3,6 +3,7 @@
 #include <audiodec.h>
 
 #include "mep_code.h"
+#include "../../VVNZRunner/include/vvnzrunner.h"
 
 #define VTHREAD_NUM				7
 #define PERF_PMON_GRAIN_USEC	1000
@@ -23,17 +24,6 @@ int sceCodecEnginePmonGetProcessorLoad(SceCodecEnginePmonProcessorLoad *res)
 	scheck.size = sizeof(SceCodecEnginePmonProcessorLoad);
 	return _sceCodecEnginePmonGetProcessorLoad(res, &scheck);
 }
-
-int vnzBridgeInject(void *mepCodeJump, unsigned int mepCodeOffset, void *mepCode, unsigned int mepCodeSize);
-int vnzBridgeRestore();
-int vnzBridgeGetSpramValue(unsigned int offset);
-int vnzBridgeExec(void *pUserArg, unsigned int userArgSize);
-int vnzBridgeMemcpyToSpram(void *src, unsigned int size, unsigned int spramOffset);
-int vnzBridgeMemcpyFromSpram(void *dst, unsigned int size, unsigned int spramOffset);
-SceUID vnzBridgeMapSpram();
-void vnzBridgeUnmapSpram(SceUID userMemid);
-int vnzBridgeMapMemory(void *vaddr, unsigned int size, void **vnzPaddr);
-int vnzBridgeUnmapMemory(void *vaddr, unsigned int size);
 
 float powf_c(float x, float n);
 
