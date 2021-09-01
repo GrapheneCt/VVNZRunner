@@ -9,7 +9,22 @@
 
 //#define TEST_BUILD
 
+typedef struct SceCodecEnginePmonProcessorLoadExt {
+	int core0;
+	int core1;
+	int core2;
+	int core3;
+	int core4;
+	int core5;
+	int core6;
+	int core7;
+	int average;
+	int peak;
+} SceCodecEnginePmonProcessorLoadExt;
+
 int(*_sceVeneziaEventHandler)(int resume, int eventid, void *args, void *opt);
+int(*_sceVeneziaGetProcessorLoad)(SceCodecEnginePmonProcessorLoadExt *data);
+
 int(*_sceAvcodecMapMemoryToVenezia)(void **vnzPaddr, const void *vaddr, unsigned int size, SceKernelMemoryRefPerm perm, unsigned int mode, unsigned int plsAllowVnz);
 int(*_sceAvcodecJpegEncoderThunkBegin)();
 int(*_sceAvcodecJpegEncoderThunkEnd)();
@@ -51,24 +66,6 @@ typedef struct SceSysmemVeneziaImageParam {
 	unsigned int paddr;
 	unsigned int memsize;
 } SceSysmemVeneziaImageParam;
-
-typedef struct SceKernelVARange {
-	uint32_t addr;
-	SceSize size;
-} SceKernelVARange;
-
-typedef struct SceKernelPARange {
-	uint32_t addr;
-	SceSize size;
-} SceKernelPARange;
-
-typedef struct SceKernelPAVector { // size is 0x14 on FW 0.990
-	SceSize size;			// Size of this structure
-	uint32_t pRanges_size;		// Ex: 8
-	uint32_t nDataInVector;		// Must be <= 8
-	uint32_t count;
-	SceKernelPARange *pRanges;
-} SceKernelPAVector;
 
 int sceCodecEngineWrapperCallGenericThunk(unsigned int id, SceCodecEngineWrapperThunkArg *arg, void *beginCallback, void *endCallback);
 void *sceCodecEngineWrapperGetVThreadProcessingResource(unsigned int key);
@@ -265,6 +262,16 @@ int vnzBridgeSetVeneziaClockFrequency(int clock)
 	return scePowerSetVeneziaClockFrequency(clock);
 }
 
+int sceCodecEnginePmonGetProcessorLoadExt(SceCodecEnginePmonProcessorLoadExt *data)
+{
+	SceCodecEnginePmonProcessorLoadExt kdata;
+	int ret = _sceVeneziaGetProcessorLoad(&kdata);
+
+	sceKernelMemcpyKernelToUser(data, &kdata, sizeof(SceCodecEnginePmonProcessorLoadExt));
+
+	return ret;
+}
+
 int procEvHandler(SceUID pid, int event_type, SceProcEventInvokeParam1 *a3, int a4)
 {
 	if (event_type == 0x1000 && s_registeredPid == pid) {
@@ -297,6 +304,7 @@ int module_start(SceSize args, const void * argp)
 		return SCE_KERNEL_START_SUCCESS;
 
 	module_get_offset(KERNEL_PID, info.modid, 0, 0x8C | 1, (uintptr_t *)&_sceVeneziaEventHandler);
+	module_get_offset(KERNEL_PID, info.modid, 0, 0x36EC | 1, (uintptr_t *)&_sceVeneziaGetProcessorLoad);
 
 	memset(&info, 0, sizeof(tai_module_info_t));
 	info.size = sizeof(tai_module_info_t);

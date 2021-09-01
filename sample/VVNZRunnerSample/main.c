@@ -92,8 +92,7 @@ int main()
 	SceUInt64 currentTimeMeasureUsec = 0;
 	SceUInt64 oldTimeMeasureUsec = 0;
 	SceUInt64 waitEndUsec = 0;
-	SceCodecEnginePmonProcessorLoad perf;
-	perf.size = sizeof(SceCodecEnginePmonProcessorLoad);
+	SceCodecEnginePmonProcessorLoadExt perf;
 
 	//Reset spram area that we will use to communicate with Venezia
 	sceClibPrintf("Reset spram area that we will use to communicate with Venezia\n");
@@ -138,12 +137,15 @@ repeat_wait:
 
 	// Get average Venezia CPU load while waiting
 	sceCodecEnginePmonStop();
-	sceCodecEnginePmonGetProcessorLoad(&perf);
+	sceCodecEnginePmonGetProcessorLoadExt(&perf);
 	sceCodecEnginePmonReset();
 	sceCodecEnginePmonStart();
 	currentTimeMeasureUsec = sceKernelGetProcessTimeWide();
 	if (currentTimeMeasureUsec - oldTimeMeasureUsec > 2000000) {
-		sceClibPrintf("Venezia CPU average load: %u %%\n", perf.average);
+		sceClibPrintf("\nPer-core Venezia CPU load:");
+		sceClibPrintf("\n-----------------------------------------------------------------\n");
+		sceClibPrintf("| %03d %% | %03d %% | %03d %% | %03d %% | %03d %% | %03d %% | %03d %% | %03d %% |", perf.core0, perf.core1, perf.core2, perf.core3, perf.core4, perf.core5, perf.core6, perf.core7);
+		sceClibPrintf("\n-----------------------------------------------------------------\n");
 		oldTimeMeasureUsec = currentTimeMeasureUsec;
 	}
 

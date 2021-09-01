@@ -15,4 +15,19 @@ int vnzBridgeUnmapMemory(void *vaddr, unsigned int size);
 int vnzBridgeGetVeneziaClockFrequency();
 int vnzBridgeSetVeneziaClockFrequency(int clock);
 
+typedef struct SceCodecEnginePmonProcessorLoadExt {
+	int core0;
+	int core1;
+	int core2;
+	int core3;
+	int core4;
+	int core5;
+	int core6;
+	int core7;
+	int average;
+	int peak;
+} SceCodecEnginePmonProcessorLoadExt;
+
+int sceCodecEnginePmonGetProcessorLoadExt(SceCodecEnginePmonProcessorLoadExt *data);
+
 #endif /* _VVNZRUNNER_H */

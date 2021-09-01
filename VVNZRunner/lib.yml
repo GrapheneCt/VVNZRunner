@@ -18,6 +18,7 @@ modules:
           vnzBridgeUnmapMemory: 0x41D0A32F
           vnzBridgeSetVeneziaClockFrequency: 0x1CBB19E0
           vnzBridgeGetVeneziaClockFrequency: 0xEA28FD21
+          sceCodecEnginePmonGetProcessorLoadExt: 0x9C79C799
           vnz_test_dump_image: 0x636890A1
           vnz_test_gate_disable: 0x1B9C4264
           vnz_test_gate_enable: 0x835C2B79
