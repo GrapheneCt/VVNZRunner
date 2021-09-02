@@ -13,7 +13,7 @@ V-Threads are threads that run on Venezia cores. Up to 6 cores can run tasks sim
 
 # Example: stb_dxt encoder
 
-Example features Venezia port of stb_dxt encoder. It encodes input RGBA8888 file to DDS. Some code has been taken from [here](https://github.com/imgdrop/dds.js/blob/038d7d9518e1d19cbec94a91e7d3d4d39cfab948/encode/dds-enc.c).
+Example features Venezia port of stb_dxt encoder. It encodes input RGBA8888 file to DDS DXT1. Some code has been taken from [here](https://github.com/imgdrop/dds.js/blob/038d7d9518e1d19cbec94a91e7d3d4d39cfab948/encode/dds-enc.c).
 
 To compile MeP code use [mepsdk](https://github.com/TeamMolecule/mepsdk).
 
