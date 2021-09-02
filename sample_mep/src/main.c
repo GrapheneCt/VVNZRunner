@@ -93,11 +93,11 @@ void myEntry(void *arg)
 			unsigned char chunk[16];
 			int chunkSize = 16;
 			switch (dxtArg->format) {
-			case FORMAT_DXT1:
+			/*case FORMAT_DXT1:
 				stb_compress_dxt_block(chunk, block, 0, DXT_FLAGS);
 				chunkSize = 8;
 				break;
-			/*case FORMAT_DXT2:
+			case FORMAT_DXT2:
 			case FORMAT_DXT3:
 				for (int i = 0; i < 8; ++i) {
 					unsigned char a0 = alpha[i * 2 + 0] / 17;
@@ -105,12 +105,12 @@ void myEntry(void *arg)
 					chunk[i] = (a1 << 4) | a0;
 				}
 				stb_compress_dxt_block(chunk + 8, block, 0, DXT_FLAGS);
-				break;
+				break;*/
 			case FORMAT_DXT4:
 			case FORMAT_DXT5:
 				stb_compress_bc4_block(chunk, alpha);
 				stb_compress_dxt_block(chunk + 8, block, 0, DXT_FLAGS);
-				break;*/
+				break;
 			}
 			memcpy(output, chunk, chunkSize);
 			output += chunkSize;

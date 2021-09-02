@@ -13,6 +13,8 @@
 #define IS_SIZE_ALIGNED( sizeToTest, PowerOfTwo )  \
         (((sizeToTest) & ((PowerOfTwo) - 1)) == 0)
 
+#define DXT_FLAGS (STB_DXT_DITHER | STB_DXT_HIGHQUAL)
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
 
@@ -24,13 +26,16 @@ typedef enum DDSFormat {
 	FORMAT_DXT5
 } DDSFormat;
 
-#define TEST_IMAGE_WIDTH		256
-#define TEST_IMAGE_HEIGHT		256
-#define DXT_FORMAT				FORMAT_DXT1
+//#define TEST_ARM
+
+#define TEST_IMAGE_WIDTH		960
+#define TEST_IMAGE_HEIGHT		544
+#define DXT_FORMAT				FORMAT_DXT5
 #define SRC_IMAGE_PATH			"app0:test.rgba"				
 
 #define VTHREAD_NUM				1
 #define PERF_PMON_GRAIN_USEC	1000
+#define PERF_PRINTF_GRAIN_USEC	200000
 
 #define SPRAM_SAFE_OFFSET		0x1404
 #define SPRAM_VTHREAD_MAILBOX_OFFSET	0x1408
@@ -65,12 +70,78 @@ typedef struct DxtCompressionArg {
 	void *stbDxtData;
 } DxtCompressionArg;
 
-static DxtCompressionArg dxtArg;
+static DxtCompressionArg s_dxtArg;
+
+void myEntryArm(void *arg)
+{
+	DxtCompressionArg *dxtArg = &s_dxtArg;
+
+	unsigned char* input = dxtArg->src;
+	void *output = dxtArg->dst;
+
+	for (int y = 0; y < dxtArg->height; y += 4) {
+		for (int x = 0; x < dxtArg->width; x += 4) {
+			unsigned char block[64];
+			unsigned char alpha[16];
+			for (int by = 0; by < 4; ++by) {
+				for (int bx = 0; bx < 4; ++bx) {
+					int ai = (by * 4) + bx;
+					int bi = ai * 4;
+					int xx = MIN(x + bx, dxtArg->width - 1);
+					int yy = MIN(y + by, dxtArg->height - 1);
+					int i = ((yy * dxtArg->width) + xx) * 4;
+					block[bi + 0] = input[i + 0];
+					block[bi + 1] = input[i + 1];
+					block[bi + 2] = input[i + 2];
+					block[bi + 3] = 0xFF;
+					alpha[ai] = input[i + 3];
+					if (dxtArg->format == FORMAT_DXT2 || dxtArg->format == FORMAT_DXT4) {
+						float am = (float)alpha[ai] / 0xFF;
+						block[bi + 0] *= am;
+						block[bi + 1] *= am;
+						block[bi + 2] *= am;
+					}
+				}
+			}
+
+			unsigned char chunk[16];
+			int chunkSize = 16;
+			switch (dxtArg->format) {
+			/*case FORMAT_DXT1:
+				stb_compress_dxt_block(chunk, block, 0, DXT_FLAGS);
+				chunkSize = 8;
+				break;
+			case FORMAT_DXT2:
+			case FORMAT_DXT3:
+				for (int i = 0; i < 8; ++i) {
+					unsigned char a0 = alpha[i * 2 + 0] / 17;
+					unsigned char a1 = alpha[i * 2 + 1] / 17;
+					chunk[i] = (a1 << 4) | a0;
+				}
+				stb_compress_dxt_block(chunk + 8, block, 0, DXT_FLAGS);
+				break;
+			case FORMAT_DXT4:*/
+			case FORMAT_DXT5:
+				stb_compress_bc4_block(chunk, alpha);
+				stb_compress_dxt_block(chunk + 8, block, 0, DXT_FLAGS);
+				break;
+			}
+			memcpy(output, chunk, chunkSize);
+			output += chunkSize;
+		}
+	}
+
+	return;
+}
 
 int VThreadInterface(SceSize args, void *argp)
 {
-	int err = vnzBridgeExec(&dxtArg, sizeof(DxtCompressionArg));
+#ifdef TEST_ARM
+	myEntryArm(0);
+#else
+	int err = vnzBridgeExec(&s_dxtArg, sizeof(DxtCompressionArg));
 	sceClibPrintf("vnzBridgeExec: 0x%X\n", err);
+#endif
 
 	return sceKernelExitDeleteThread(0);
 }
@@ -113,31 +184,41 @@ int main()
 	void *dstMem, *srcMem, *stbMem;
 	unsigned int dstPhysmem, srcPhysmem, stbPhysmem;
 	unsigned int dstSize = TEST_IMAGE_WIDTH * TEST_IMAGE_HEIGHT * 4;
-	dstSize = ALIGN(dstSize, 4 * 1024);
+	dstSize = ALIGN(dstSize, 1 * 1024 * 1024);
 	unsigned int srcSize = TEST_IMAGE_WIDTH * TEST_IMAGE_HEIGHT * 4;
-	srcSize = ALIGN(srcSize, 4 * 1024);
+	srcSize = ALIGN(srcSize, 1 * 1024 * 1024);
 	unsigned int stbSize = 4 * 1024;
 
 	// Allocate memory block
 	sceClibPrintf("Allocate memory block for destination\n");
 
-	dstMb = sceKernelAllocMemBlock("SceVeneziaTestDst", SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_NC_RW, dstSize, NULL);
-	sceClibPrintf("sceKernelAllocMemBlock: 0x%X\n", dstMb);
+	dstMb = sceKernelAllocMemBlock("SceVeneziaTestDst", SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW, dstSize, NULL);
+	if (dstMb <= 0) {
+		sceClibPrintf("sceKernelAllocMemBlock for dstMb: 0x%X\n", dstMb);
+		abort();
+	}
 	sceKernelGetMemBlockBase(dstMb, &dstMem);
-	*(int *)dstMem = 0x911;
 
 	// Map for direct access from Venezia
 	sceClibPrintf("Map for direct access from Venezia\n");
 
+#ifndef TEST_ARM
 	err = vnzBridgeMapMemory(dstMem, dstSize, &dstPhysmem, 1);
-	sceClibPrintf("vnzBridgeMapMemory: 0x%X\n", err);
+	if (err < 0) {
+		sceClibPrintf("vnzBridgeMapMemory for dstMem: 0x%X\n", err);
+		abort();
+	}
+#endif
 	sceClibPrintf("Memory paddr: 0x%X\n", dstPhysmem);
 
 	// Allocate memory block
 	sceClibPrintf("Allocate memory block for source\n");
 
-	srcMb = sceKernelAllocMemBlock("SceVeneziaTestSrc", SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_NC_RW, srcSize, NULL);
-	sceClibPrintf("sceKernelAllocMemBlock: 0x%X\n", srcMb);
+	srcMb = sceKernelAllocMemBlock("SceVeneziaTestSrc", SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW, srcSize, NULL);
+	if (srcMb <= 0) {
+		sceClibPrintf("sceKernelAllocMemBlock for srcMb: 0x%X\n", srcMb);
+		abort();
+	}
 	sceKernelGetMemBlockBase(srcMb, &srcMem);
 
 	// Read source image
@@ -154,15 +235,23 @@ int main()
 	// Map for direct access from Venezia
 	sceClibPrintf("Map for direct access from Venezia\n");
 
+#ifndef TEST_ARM
 	err = vnzBridgeMapMemory(srcMem, srcSize, &srcPhysmem, 0);
-	sceClibPrintf("vnzBridgeMapMemory: 0x%X\n", err);
+	if (err < 0) {
+		sceClibPrintf("vnzBridgeMapMemory for srcMem: 0x%X\n", err);
+		abort();
+	}
+#endif
 	sceClibPrintf("Memory paddr: 0x%X\n", srcPhysmem);
 
 	// Allocate memory block
 	sceClibPrintf("Allocate memory block for stb_dxt constants\n");
 
 	stbMb = sceKernelAllocMemBlock("SceVeneziaTestStb", SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_NC_RW, stbSize, NULL);
-	sceClibPrintf("sceKernelAllocMemBlock: 0x%X\n", stbMb);
+	if (stbMb <= 0) {
+		sceClibPrintf("sceKernelAllocMemBlock for stbMb: 0x%X\n", stbMb);
+		abort();
+	}
 	sceKernelGetMemBlockBase(stbMb, &stbMem);
 
 	StbDxtConstData *cst = (StbDxtConstData *)stbMem;
@@ -175,7 +264,10 @@ int main()
 	sceClibPrintf("Map for direct access from Venezia\n");
 
 	err = vnzBridgeMapMemory(stbMem, stbSize, &stbPhysmem, 0);
-	sceClibPrintf("vnzBridgeMapMemory: 0x%X\n", err);
+	if (err < 0) {
+		sceClibPrintf("vnzBridgeMapMemory for stbMem: 0x%X\n", err);
+		abort();
+	}
 	sceClibPrintf("Memory paddr: 0x%X\n", stbPhysmem);
 
 	sceClibPrintf("-------------------- END: memory mapping test --------------------\n\n");
@@ -257,17 +349,25 @@ int main()
 	// Spawn V-Threads
 	sceClibPrintf("Spawn V-Threads, total num: %d\n", VTHREAD_NUM);
 
+#ifndef TEST_ARM
 	vnzBridgeSetVeneziaExecClockFrequency(333);
 	sceCodecEngineChangeNumWorkerCoresMax();
+#endif
 
-	dxtArg.src = srcPhysmem;
-	dxtArg.dst = dstPhysmem;
-	dxtArg.stbDxtData = stbPhysmem;
-	dxtArg.srcMemSize = srcSize;
-	dxtArg.dstMemSize = dstSize;
-	dxtArg.format = DXT_FORMAT;
-	dxtArg.width = TEST_IMAGE_WIDTH;
-	dxtArg.height = TEST_IMAGE_HEIGHT;
+#ifdef TEST_ARM
+	s_dxtArg.src = srcMem;
+	s_dxtArg.dst = dstMem;
+#else
+	s_dxtArg.src = srcPhysmem;
+	s_dxtArg.dst = dstPhysmem;
+#endif
+
+	s_dxtArg.stbDxtData = stbPhysmem;
+	s_dxtArg.srcMemSize = srcSize;
+	s_dxtArg.dstMemSize = dstSize;
+	s_dxtArg.format = DXT_FORMAT;
+	s_dxtArg.width = TEST_IMAGE_WIDTH;
+	s_dxtArg.height = TEST_IMAGE_HEIGHT;
 
 	for (int i = 0; i < VTHREAD_NUM; i++) {
 		sceClibPrintf("Spawning V-Thread %d\n", i);
@@ -298,7 +398,7 @@ repeat_wait:
 	sceCodecEnginePmonReset();
 	sceCodecEnginePmonStart();
 	currentTimeMeasureUsec = sceKernelGetProcessTimeWide();
-	if (currentTimeMeasureUsec - oldTimeMeasureUsec > 2000000) {
+	if (currentTimeMeasureUsec - oldTimeMeasureUsec > PERF_PRINTF_GRAIN_USEC) {
 		sceClibPrintf("\nPer-core Venezia CPU load:");
 		sceClibPrintf("\n-----------------------------------------------------------------\n");
 		sceClibPrintf("| %03d %% | %03d %% | %03d %% | %03d %% | %03d %% | %03d %% | %03d %% | %03d %% |", perf.core0, perf.core1, perf.core2, perf.core3, perf.core4, perf.core5, perf.core6, perf.core7);
@@ -321,8 +421,10 @@ repeat_wait:
 
 	sceClibPrintf("-------------------- END: Venezia test --------------------\n\n");
 
+#ifndef TEST_ARM
 	vnzBridgeUnmapMemory(dstMem, dstSize, 1);
 	vnzBridgeUnmapMemory(srcMem, srcSize, 0);
+#endif
 	vnzBridgeUnmapMemory(stbMem, stbSize, 0);
 
 	fwrite(dstMem, dstSize, 1, output);
