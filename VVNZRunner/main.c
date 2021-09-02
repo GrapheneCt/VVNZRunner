@@ -49,10 +49,11 @@ int(*_sceAvcodecJpegEncoderThunkEnd)();
 #define INJECT_CODE_SIZE_LIMIT	0x1000
 #define INJECT_CODE_BASE_OFFSET	0x1F988
 
-#define scePUIDOpenByGUID			sceKernelCreateUserUid
-#define scePUIDClose				sceKernelDeleteUserUid
-#define	scePUIDtoGUID				sceKernelKernelUidForUserUid
-#define sceKernelVARangeToPAVector	sceKernelGetPaddrList
+#define scePUIDOpenByGUID					sceKernelCreateUserUid
+#define scePUIDClose						sceKernelDeleteUserUid
+#define	scePUIDtoGUID						sceKernelKernelUidForUserUid
+#define sceKernelVARangeToPAVector			sceKernelGetPaddrList
+#define sceKernelDcacheInvalidateRange_1	sceKernelCpuDcacheAndL2InvalidateRange
 
 typedef struct SceCodecEngineWrapperThunkArg {
 	void *pVThreadProcessingResource;
@@ -85,6 +86,8 @@ static SceUID s_injectMemblock = SCE_UID_INVALID_UID;
 static void *s_injectMem = NULL;
 static SceUID s_registeredPid = SCE_UID_INVALID_UID;
 static SceUID s_userSpramMap = SCE_UID_INVALID_UID;
+static int *_vnzExecClockFrequency = NULL;
+static int targetExecClockFrequency = 166;
 
 void _vnzDoRestore()
 {
@@ -101,21 +104,37 @@ void _vnzDoInject()
 	memcpy(VADDR_VENEZIA_IMAGE + s_requestedCodeOffset, s_injectMem + s_requestedCodeSize, s_requestedCodeSize);
 }
 
-int vnzBridgeMapMemory(void *vaddr, unsigned int size, void **vnzPaddr)
+int vnzBridgeMapMemory(void *vaddr, unsigned int size, void **vnzPaddr, int isVnzWritable)
 {
 	void *res = 0;
+	int ret = 0;
 
-	int ret = _sceAvcodecMapMemoryToVenezia(&res, vaddr, size, SCE_KERNEL_MEMORY_REF_PERM_KERN_R | SCE_KERNEL_MEMORY_REF_PERM_KERN_W, 2, 1);
+	if (isVnzWritable)
+		ret = _sceAvcodecMapMemoryToVenezia(&res, vaddr, size, SCE_KERNEL_MEMORY_REF_PERM_KERN_W, 2, 1);
+	else
+		ret = _sceAvcodecMapMemoryToVenezia(&res, vaddr, size, SCE_KERNEL_MEMORY_REF_PERM_KERN_R, 1, 1);
 
 	sceKernelMemcpyKernelToUser(vnzPaddr, &res, 4);
 
 	return ret;
 }
 
-int vnzBridgeUnmapMemory(void *vaddr, unsigned int size)
+int vnzBridgeUnmapMemory(void *vaddr, unsigned int size, int isVnzWritable)
 {
-	unsigned int vi = vaddr;
-	return sceKernelMemRangeReleaseWithPerm(SCE_KERNEL_MEMORY_REF_PERM_KERN_R | SCE_KERNEL_MEMORY_REF_PERM_KERN_W, vi & 0xffffff00, size);
+	unsigned int va = vaddr;
+	unsigned int rangeSize = size + 0xff + (va & 0xff) & 0xffffff00;
+	unsigned int rangeBase = va & 0xffffff00;
+	int ret = 0;
+
+	if (isVnzWritable) {
+		sceKernelDcacheInvalidateRange_1(rangeBase, ((va + 0xff) - (va & 0xffffff00)) + size & 0xffffff00);
+		ret = sceKernelMemRangeReleaseWithPerm(SCE_KERNEL_MEMORY_REF_PERM_KERN_W, rangeBase, rangeSize);
+	}
+	else {
+		ret = sceKernelMemRangeReleaseWithPerm(SCE_KERNEL_MEMORY_REF_PERM_KERN_R, rangeBase, rangeSize);
+	}
+
+	return ret;
 }
 
 void _vnzDoReset()
@@ -150,24 +169,24 @@ int vnzBridgeInject(void *mepCodeJump, unsigned int mepCodeOffset, void *mepCode
 	if (s_registeredPid != SCE_UID_INVALID_UID)
 		vnzBridgeRestore();
 
-	if (mepCodeSize > INJECT_CODE_SIZE_LIMIT)
-		return -1;
-
 	if (!mepCode)
 		return -2;
 
 	if (mepCodeOffset > 0xFFFF0)
 		return -3;
 
-	if (!mepCodeJump)
-		memcpy(s_injectCodeJump, s_injectCodeJumpDefault, 4);
-	else
-		sceKernelMemcpyUserToKernel(s_injectCodeJump, mepCodeJump, 4);
-
 	if (!mepCodeOffset)
 		s_requestedCodeOffset = 0xE3790; // as in s_injectCodeJumpDefault
 	else
 		s_requestedCodeOffset = mepCodeOffset;
+
+	if (s_requestedCodeOffset + mepCodeSize > IMAGE_MEMSIZE)
+		return -1;
+
+	if (!mepCodeJump)
+		memcpy(s_injectCodeJump, s_injectCodeJumpDefault, 4);
+	else
+		sceKernelMemcpyUserToKernel(s_injectCodeJump, mepCodeJump, 4);
 
 	s_requestedCodeSize = mepCodeSize;
 
@@ -252,14 +271,21 @@ int vnzBridgeGetSpramValue(unsigned int offset)
 	return value;
 }
 
-int vnzBridgeGetVeneziaClockFrequency()
+int vnzBridgeGetVeneziaExecClockFrequency()
 {
-	return scePowerGetVeneziaClockFrequency();
+	return *_vnzExecClockFrequency;
 }
 
-int vnzBridgeSetVeneziaClockFrequency(int clock)
+int vnzBridgeSetVeneziaExecClockFrequency(int clock)
 {
-	return scePowerSetVeneziaClockFrequency(clock);
+	if (clock == 0x6f || clock == 0x37 || clock == 0x53 || clock == 0x29 || clock == 0xde || clock == 0x14d || clock == 0xa6) {
+		targetExecClockFrequency = clock;
+		*_vnzExecClockFrequency = clock;
+		return SCE_OK;
+	}
+	else {
+		return -1;
+	}
 }
 
 int sceCodecEnginePmonGetProcessorLoadExt(SceCodecEnginePmonProcessorLoadExt *data)
@@ -274,13 +300,25 @@ int sceCodecEnginePmonGetProcessorLoadExt(SceCodecEnginePmonProcessorLoadExt *da
 
 int procEvHandler(SceUID pid, int event_type, SceProcEventInvokeParam1 *a3, int a4)
 {
-	if (event_type == 0x1000 && s_registeredPid == pid) {
-		_vnzDoRestore();
-		_vnzDoReset();
+	if (event_type == 0x1000) {
+
+		if (targetExecClockFrequency != 166)
+			*_vnzExecClockFrequency = 166;
+
+		if (s_registeredPid == pid) {
+			_vnzDoRestore();
+			_vnzDoReset();
+		}
 	}
-	else if (event_type == 0x40000 && s_registeredPid == pid) {
-		_vnzDoInject();
-		_vnzDoReset();
+	else if (event_type == 0x40000) {
+
+		if (targetExecClockFrequency != 166)
+			*_vnzExecClockFrequency = targetExecClockFrequency;
+
+		if (s_registeredPid == pid) {
+			_vnzDoInject();
+			_vnzDoReset();
+		}
 	}
 
 	return SCE_OK;
@@ -288,6 +326,11 @@ int procEvHandler(SceUID pid, int event_type, SceProcEventInvokeParam1 *a3, int 
 
 int procEvExitHandler(SceUID pid, SceProcEventInvokeParam1 *a2, int a3)
 {
+	if (targetExecClockFrequency != 166) {
+		*_vnzExecClockFrequency = 166;
+		targetExecClockFrequency = 166;
+	}
+
 	if (s_registeredPid == pid) {
 		vnzBridgeRestore();
 	}
@@ -305,6 +348,7 @@ int module_start(SceSize args, const void * argp)
 
 	module_get_offset(KERNEL_PID, info.modid, 0, 0x8C | 1, (uintptr_t *)&_sceVeneziaEventHandler);
 	module_get_offset(KERNEL_PID, info.modid, 0, 0x36EC | 1, (uintptr_t *)&_sceVeneziaGetProcessorLoad);
+	module_get_offset(KERNEL_PID, info.modid, 1, 0xBC, (uintptr_t *)&_vnzExecClockFrequency);
 
 	memset(&info, 0, sizeof(tai_module_info_t));
 	info.size = sizeof(tai_module_info_t);

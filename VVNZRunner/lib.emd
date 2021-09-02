@@ -19,6 +19,6 @@ Library: VVNZRunner function: vnzBridgeMemcpyToSpram
 Library: VVNZRunner function: vnzBridgeMemcpyFromSpram
 Library: VVNZRunner function: vnzBridgeMapMemory
 Library: VVNZRunner function: vnzBridgeUnmapMemory
-Library: VVNZRunner function: vnzBridgeGetVeneziaClockFrequency
-Library: VVNZRunner function: vnzBridgeSetVeneziaClockFrequency
+Library: VVNZRunner function: vnzBridgeGetVeneziaExecClockFrequency
+Library: VVNZRunner function: vnzBridgeSetVeneziaExecClockFrequency
 Library: VVNZRunner function: sceCodecEnginePmonGetProcessorLoadExt

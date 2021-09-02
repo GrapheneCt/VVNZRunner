@@ -32,11 +32,6 @@ VDSuiteCreateStubs(imports_lowio ScePervasiveForDriver.emd
     ScePervasiveForDriver_stub
 )
 
-VDSuiteCreateStubs(imports_sysmem SceCpuForDriver.emd
-  LIBRARIES
-    SceCpuForDriver_stub
-)
-
 VDSuiteCreateStubs(imports_venezia SceCodecEngineWrapperForDriver.emd
   LIBRARIES
     SceCodecEngineWrapperForDriver_stub
@@ -70,10 +65,10 @@ target_link_libraries("${PROJECT_NAME}.elf"
   ScePowerForDriver_stub
   SceIofilemgrForDriver_stub
   SceProcEventForDriver_stub
+  SceCpuForDriver_stub
   taihenModuleUtils_stub
   taihenForKernel_stub
   "${CMAKE_CURRENT_BINARY_DIR}/imports_lowio/libScePervasiveForDriver_stub.a"
-  "${CMAKE_CURRENT_BINARY_DIR}/imports_sysmem/libSceCpuForDriver_stub.a"
   "${CMAKE_CURRENT_BINARY_DIR}/imports_sysroot/libSceSysrootForDriver_stub.a"
   "${CMAKE_CURRENT_BINARY_DIR}/imports_venezia/libSceCodecEngineWrapperForDriver_stub.a"
 )

@@ -50,8 +50,9 @@
       <OptimizationLevel>Level0</OptimizationLevel>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>-lVVNZRunner_stub;-lSceCodecEngine_stub;-lSceCodecEngineWrapper_stub;-lSceAudiodec_stub;-lSceCodecEngineUser_stub;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>-lVVNZRunner_stub;-lSceCodecEngine_stub;-lSceCodecEngineWrapper_stub;-lSceAudiodec_stub;-lSceCodecEngineUser_stub;-lSceDmacMgr_stub;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(SCE_PSP2_SDK_DIR)\target\lib\vdsuite;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <GenerateSnMapFile>FullMapFile</GenerateSnMapFile>
     </Link>
     <PostBuildEvent>
       <Command>"$(SCE_PSP2_SDK_DIR)/host_tools/build/bin/vdsuite-pubprx.exe" --strip --compress "$(LocalDebuggerCommand)" "$(OutDir)eboot.bin"</Command>
@@ -70,6 +71,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mep_code.h" />
+    <ClInclude Include="stb_dxt.h" />
   </ItemGroup>
   <Import Condition="'$(ConfigurationType)' == 'Makefile' and Exists('$(VCTargetsPath)\Platforms\$(Platform)\SCE.Makefile.$(Platform).targets')" Project="$(VCTargetsPath)\Platforms\$(Platform)\SCE.Makefile.$(Platform).targets" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

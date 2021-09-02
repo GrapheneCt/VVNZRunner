@@ -6,3 +6,4 @@ Library: SceCpuForDriver stubfile: "SceCpuForDriver_stub"
 Library: SceCpuForDriver nidsuffix: ""
 Library: SceCpuForDriver libnamenid: 0x40ECDB0E
 Library: SceCpuForDriver function: sceKernelL2cacheClean nidvalue: 0xE813EBB2
+Library: SceCpuForDriver function: sceKernelDcacheInvalidateRange_1 nidvalue: 0x02796361

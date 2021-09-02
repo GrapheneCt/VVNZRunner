@@ -14,8 +14,8 @@ endif()
 project(ime_sample ASM)
 project(ime_sample C)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -flto -fno-toplevel-reorder -mivc2 -mcop -mall-opts -mrepeat -O3")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -flto -fno-toplevel-reorder -mivc2 -mcop -mall-opts -mrepeat -O3")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu11 -flto -fno-toplevel-reorder -mivc2 -mcop -mall-opts -mrepeat -O3 -Wl,-T${CMAKE_SOURCE_DIR}/src/elf32mep_vnz.x,-z,max-page-size=0x1000000")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -flto -fno-toplevel-reorder -mivc2 -mcop -mall-opts -mrepeat -O3 -Wl,-T${CMAKE_SOURCE_DIR}/src/elf32mep_vnz.x,-z,max-page-size=0x1000000")
 
 add_executable(${PROJECT_NAME}
   src/boot.c

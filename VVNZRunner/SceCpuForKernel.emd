@@ -1,0 +1,8 @@
+emd: 1
+
+Library: SceCpuForKernel attr: auto_export
+Library: SceCpuForKernel version: 1
+Library: SceCpuForKernel stubfile: "SceCpuForKernel_stub"
+Library: SceCpuForKernel nidsuffix: ""
+Library: SceCpuForKernel libnamenid: 0xA5195D20
+Library: SceCpuForKernel function: sceKernelCpuDcacheCleanInvalidateSW nidvalue: 0x76DAB4D0

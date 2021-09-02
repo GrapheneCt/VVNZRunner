@@ -1,11 +1,35 @@
 #include <kernel.h>
 #include <codecengine.h>
 #include <audiodec.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "mep_code.h"
 #include "../../VVNZRunner/include/vvnzrunner.h"
 
-#define VTHREAD_NUM				7
+#define ALIGN(x, a)	(((x) + ((a) - 1)) & ~((a) - 1))
+
+#define IS_SIZE_ALIGNED( sizeToTest, PowerOfTwo )  \
+        (((sizeToTest) & ((PowerOfTwo) - 1)) == 0)
+
+#define STB_DXT_IMPLEMENTATION
+#include "stb_dxt.h"
+
+typedef enum DDSFormat {
+	FORMAT_DXT1,
+	FORMAT_DXT2,
+	FORMAT_DXT3,
+	FORMAT_DXT4,
+	FORMAT_DXT5
+} DDSFormat;
+
+#define TEST_IMAGE_WIDTH		256
+#define TEST_IMAGE_HEIGHT		256
+#define DXT_FORMAT				FORMAT_DXT1
+#define SRC_IMAGE_PATH			"app0:test.rgba"				
+
+#define VTHREAD_NUM				1
 #define PERF_PMON_GRAIN_USEC	1000
 
 #define SPRAM_SAFE_OFFSET		0x1404
@@ -29,9 +53,23 @@ float powf_c(float x, float n);
 
 static SceUID vthreadWrapId[VTHREAD_NUM];
 
+typedef struct DxtCompressionArg {
+	void *src;
+	void *dst;
+	unsigned int srcMemSize;
+	unsigned int dstMemSize;
+	unsigned int format;
+	unsigned int mode;
+	unsigned int width;
+	unsigned int height;
+	void *stbDxtData;
+} DxtCompressionArg;
+
+static DxtCompressionArg dxtArg;
+
 int VThreadInterface(SceSize args, void *argp)
 {
-	int err = vnzBridgeExec(NULL, 0);
+	int err = vnzBridgeExec(&dxtArg, sizeof(DxtCompressionArg));
 	sceClibPrintf("vnzBridgeExec: 0x%X\n", err);
 
 	return sceKernelExitDeleteThread(0);
@@ -47,6 +85,21 @@ SceUID spawnVThread()
 	return thid;
 }
 
+static void fileWriteString(FILE* file, const char* str) {
+	fwrite(str, strlen(str), 1, file);
+}
+
+static void fileWrite32(FILE* file, int32_t value) {
+	fwrite(&value, 4, 1, file);
+}
+
+static void fileWritePadding(FILE* file, int size) {
+	void *padding = malloc(size);
+	memset(padding, 0, size * 4);
+	fwrite(padding, 4, size, file);
+	free(padding);
+}
+
 int main()
 {
 	int err = 0;
@@ -55,33 +108,127 @@ int main()
 
 	sceClibPrintf("-------------------- START: memory mapping test --------------------\n");
 
-	void *testmem;
-	unsigned int physmem;
-	unsigned int size = 256 * 1024;
+	SceUID dstMb, srcMb, stbMb;
+	SceUID fd;
+	void *dstMem, *srcMem, *stbMem;
+	unsigned int dstPhysmem, srcPhysmem, stbPhysmem;
+	unsigned int dstSize = TEST_IMAGE_WIDTH * TEST_IMAGE_HEIGHT * 4;
+	dstSize = ALIGN(dstSize, 4 * 1024);
+	unsigned int srcSize = TEST_IMAGE_WIDTH * TEST_IMAGE_HEIGHT * 4;
+	srcSize = ALIGN(srcSize, 4 * 1024);
+	unsigned int stbSize = 4 * 1024;
 
 	// Allocate memory block
-	sceClibPrintf("Allocate memory block\n");
+	sceClibPrintf("Allocate memory block for destination\n");
 
-	SceUID testmb = sceKernelAllocMemBlock("SceVeneziaTest", SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_NC_RW, size, NULL);
-	sceClibPrintf("sceKernelAllocMemBlock: 0x%X\n", testmb);
-	sceKernelGetMemBlockBase(testmb, &testmem);
-
-	*(int *)testmem = 0x2134;
+	dstMb = sceKernelAllocMemBlock("SceVeneziaTestDst", SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_NC_RW, dstSize, NULL);
+	sceClibPrintf("sceKernelAllocMemBlock: 0x%X\n", dstMb);
+	sceKernelGetMemBlockBase(dstMb, &dstMem);
+	*(int *)dstMem = 0x911;
 
 	// Map for direct access from Venezia
 	sceClibPrintf("Map for direct access from Venezia\n");
 
-	err = vnzBridgeMapMemory(testmem, size, &physmem);
+	err = vnzBridgeMapMemory(dstMem, dstSize, &dstPhysmem, 1);
 	sceClibPrintf("vnzBridgeMapMemory: 0x%X\n", err);
-	sceClibPrintf("Memory paddr: 0x%X\n", physmem);
+	sceClibPrintf("Memory paddr: 0x%X\n", dstPhysmem);
 
-	// Unmap from direct access from Venezia
-	sceClibPrintf("Unmap from direct access from Venezia\n");
+	// Allocate memory block
+	sceClibPrintf("Allocate memory block for source\n");
 
-	err = vnzBridgeUnmapMemory(testmem, size);
-	sceClibPrintf("vnzBridgeUnmapMemory: 0x%X\n", err);
+	srcMb = sceKernelAllocMemBlock("SceVeneziaTestSrc", SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_NC_RW, srcSize, NULL);
+	sceClibPrintf("sceKernelAllocMemBlock: 0x%X\n", srcMb);
+	sceKernelGetMemBlockBase(srcMb, &srcMem);
+
+	// Read source image
+	sceClibPrintf("Read source image\n");
+
+	fd = sceIoOpen(SRC_IMAGE_PATH, SCE_O_RDONLY, 0);
+	if (fd < 0) {
+		sceClibPrintf("Source image not dound, path %s\n", SRC_IMAGE_PATH);
+		abort();
+	}
+	sceIoRead(fd, srcMem, TEST_IMAGE_WIDTH * TEST_IMAGE_HEIGHT * 4);
+	sceIoClose(fd);
+
+	// Map for direct access from Venezia
+	sceClibPrintf("Map for direct access from Venezia\n");
+
+	err = vnzBridgeMapMemory(srcMem, srcSize, &srcPhysmem, 0);
+	sceClibPrintf("vnzBridgeMapMemory: 0x%X\n", err);
+	sceClibPrintf("Memory paddr: 0x%X\n", srcPhysmem);
+
+	// Allocate memory block
+	sceClibPrintf("Allocate memory block for stb_dxt constants\n");
+
+	stbMb = sceKernelAllocMemBlock("SceVeneziaTestStb", SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_NC_RW, stbSize, NULL);
+	sceClibPrintf("sceKernelAllocMemBlock: 0x%X\n", stbMb);
+	sceKernelGetMemBlockBase(stbMb, &stbMem);
+
+	StbDxtConstData *cst = (StbDxtConstData *)stbMem;
+	sceClibMemcpy(cst->stb__OMatch5, stb__OMatch5, sizeof(stb__OMatch5));
+	sceClibMemcpy(cst->stb__OMatch6, stb__OMatch6, sizeof(stb__OMatch6));
+	sceClibMemcpy(cst->stb__midpoints5, stb__midpoints5, sizeof(stb__midpoints5));
+	sceClibMemcpy(cst->stb__midpoints6, stb__midpoints6, sizeof(stb__midpoints6));
+
+	// Map for direct access from Venezia
+	sceClibPrintf("Map for direct access from Venezia\n");
+
+	err = vnzBridgeMapMemory(stbMem, stbSize, &stbPhysmem, 0);
+	sceClibPrintf("vnzBridgeMapMemory: 0x%X\n", err);
+	sceClibPrintf("Memory paddr: 0x%X\n", stbPhysmem);
 
 	sceClibPrintf("-------------------- END: memory mapping test --------------------\n\n");
+
+	sceClibPrintf("-------------------- START: Write DDS info --------------------\n");
+
+	char* fourcc[5];
+	FILE* output;
+
+	if (!IS_SIZE_ALIGNED(TEST_IMAGE_WIDTH, 4)) {
+		sceClibPrintf("Image width is not aligned by 4!\n");
+		abort();
+	}
+
+	if (!IS_SIZE_ALIGNED(TEST_IMAGE_HEIGHT, 4)) {
+		sceClibPrintf("Image height is not aligned by 4!\n");
+		abort();
+	}
+
+	output = fopen("ux0:data/VNZ_TEST.dds", "wb");
+
+	switch (DXT_FORMAT) {
+	case FORMAT_DXT1:
+		sceClibStrncpy(fourcc, "DXT1", 5);
+		break;
+	case FORMAT_DXT2:
+		sceClibStrncpy(fourcc, "DXT2", 5);
+		break;
+	case FORMAT_DXT3:
+		sceClibStrncpy(fourcc, "DXT3", 5);
+		break;
+	case FORMAT_DXT4:
+		sceClibStrncpy(fourcc, "DXT4", 5);
+		break;
+	case FORMAT_DXT5:
+		sceClibStrncpy(fourcc, "DXT5", 5);
+		break;
+	}
+
+	fileWriteString(output, "DDS ");
+	fileWrite32(output, 124);
+	fileWrite32(output, 0x1007);
+	fileWrite32(output, TEST_IMAGE_HEIGHT);
+	fileWrite32(output, TEST_IMAGE_WIDTH);
+	fileWritePadding(output, 14);
+	fileWrite32(output, 32);
+	fileWrite32(output, 0x04);
+	fileWriteString(output, fourcc);
+	fileWritePadding(output, 5);
+	fileWrite32(output, 0x1000);
+	fileWritePadding(output, 4);
+
+	sceClibPrintf("-------------------- END: Write DDS info --------------------\n\n");
 
 	sceClibPrintf("-------------------- START: Venezia test --------------------\n");
 
@@ -110,7 +257,17 @@ int main()
 	// Spawn V-Threads
 	sceClibPrintf("Spawn V-Threads, total num: %d\n", VTHREAD_NUM);
 
+	vnzBridgeSetVeneziaExecClockFrequency(333);
 	sceCodecEngineChangeNumWorkerCoresMax();
+
+	dxtArg.src = srcPhysmem;
+	dxtArg.dst = dstPhysmem;
+	dxtArg.stbDxtData = stbPhysmem;
+	dxtArg.srcMemSize = srcSize;
+	dxtArg.dstMemSize = dstSize;
+	dxtArg.format = DXT_FORMAT;
+	dxtArg.width = TEST_IMAGE_WIDTH;
+	dxtArg.height = TEST_IMAGE_HEIGHT;
 
 	for (int i = 0; i < VTHREAD_NUM; i++) {
 		sceClibPrintf("Spawning V-Thread %d\n", i);
@@ -147,6 +304,7 @@ repeat_wait:
 		sceClibPrintf("| %03d %% | %03d %% | %03d %% | %03d %% | %03d %% | %03d %% | %03d %% | %03d %% |", perf.core0, perf.core1, perf.core2, perf.core3, perf.core4, perf.core5, perf.core6, perf.core7);
 		sceClibPrintf("\n-----------------------------------------------------------------\n");
 		oldTimeMeasureUsec = currentTimeMeasureUsec;
+		sceClibPrintf("clock: %d\n", vnzBridgeGetVeneziaExecClockFrequency());
 	}
 
 	for (int i = 0; i < VTHREAD_NUM; i++) {
@@ -163,87 +321,14 @@ repeat_wait:
 
 	sceClibPrintf("-------------------- END: Venezia test --------------------\n\n");
 
+	vnzBridgeUnmapMemory(dstMem, dstSize, 1);
+	vnzBridgeUnmapMemory(srcMem, srcSize, 0);
+	vnzBridgeUnmapMemory(stbMem, stbSize, 0);
+
+	fwrite(dstMem, dstSize, 1, output);
+	fclose(output);
+
 	vnzBridgeRestore();
 
 	return 0;
-}
-
-// Impl from math_neon
-const float __powf_rng[2] = {
-	1.442695041f,
-	0.693147180f
-};
-
-const float __powf_lut[16] = {
-	-2.295614848256274, 	//p0	log
-	-2.470711633419806, 	//p4
-	-5.686926051100417, 	//p2
-	-0.165253547131978, 	//p6
-	+5.175912446351073, 	//p1
-	+0.844006986174912, 	//p5
-	+4.584458825456749, 	//p3
-	+0.014127821926000,		//p7
-	0.9999999916728642,		//p0	exp
-	0.04165989275009526, 	//p4
-	0.5000006143673624, 	//p2
-	0.0014122663401803872, 	//p6
-	1.000000059694879, 		//p1
-	0.008336936973260111, 	//p5
-	0.16666570253074878, 	//p3
-	0.00019578093328483123	//p7
-};
-
-float powf_c(float x, float n)
-{
-	float a, b, c, d, xx;
-	int m;
-
-	union {
-		float   f;
-		int 	i;
-	} r;
-
-	//extract exponent
-	r.f = x;
-	m = (r.i >> 23);
-	m = m - 127;
-	r.i = r.i - (m << 23);
-
-	//Taylor Polynomial (Estrins)
-	xx = r.f * r.f;
-	a = (__powf_lut[4] * r.f) + (__powf_lut[0]);
-	b = (__powf_lut[6] * r.f) + (__powf_lut[2]);
-	c = (__powf_lut[5] * r.f) + (__powf_lut[1]);
-	d = (__powf_lut[7] * r.f) + (__powf_lut[3]);
-	a = a + b * xx;
-	c = c + d * xx;
-	xx = xx * xx;
-	r.f = a + c * xx;
-
-	//add exponent
-	r.f = r.f + ((float)m) * __powf_rng[1];
-
-	r.f = r.f * n;
-
-
-	//Range Reduction:
-	m = (int)(r.f * __powf_rng[0]);
-	r.f = r.f - ((float)m) * __powf_rng[1];
-
-	//Taylor Polynomial (Estrins)
-	a = (__powf_lut[12] * r.f) + (__powf_lut[8]);
-	b = (__powf_lut[14] * r.f) + (__powf_lut[10]);
-	c = (__powf_lut[13] * r.f) + (__powf_lut[9]);
-	d = (__powf_lut[15] * r.f) + (__powf_lut[11]);
-	xx = r.f * r.f;
-	a = a + b * xx;
-	c = c + d * xx;
-	xx = xx * xx;
-	r.f = a + c * xx;
-
-	//multiply by 2 ^ m 
-	m = m << 23;
-	r.i = r.i + m;
-
-	return r.f;
 }

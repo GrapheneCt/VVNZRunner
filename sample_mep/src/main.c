@@ -1,4 +1,5 @@
 #include "vthread.h"
+#include "memory.h"
 
 #define VENEZIA_SPRAM_ADDR		0xF1840000
 #define SPRAM_MEMSIZE			0x2500000
@@ -10,23 +11,115 @@
 #define VTHREAD_STATE_READY		1
 #define VTHREAD_STATE_FINISHED	2
 
+#define STB_DXT_VNZ_CONST_STORAGE	SPRAM_USE_BASE
+#define STB_DXT_IMPLEMENTATION
+#include "stb_dxt_vnz.h"
+
 void *vnzMemcpyToSpram(void *src, unsigned int size, unsigned int spramOffset);
 void *vnzMemcpyFromSpram(void *dst, unsigned int size, unsigned int spramOffset);
-void *memcpy(void *s1, const void *s2, unsigned int n);
-int main();
-void writeAnswer(float res);
-float powf_c(float x, float n);
+//float powf_c(float x, float n);
+
+#define DXT_FLAGS (STB_DXT_DITHER | STB_DXT_HIGHQUAL)
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+
+typedef enum DDSFormat {
+	FORMAT_DXT1,
+	FORMAT_DXT2,
+	FORMAT_DXT3,
+	FORMAT_DXT4,
+	FORMAT_DXT5
+} DDSFormat;
+
+typedef struct DxtCompressionArg {
+	void *src;
+	void *dst;
+	unsigned int srcMemSize;
+	unsigned int dstMemSize;
+	unsigned int format;
+	unsigned int mode;
+	unsigned int width;
+	unsigned int height;
+	void *stbDxtData;
+} DxtCompressionArg;
 
 void myEntry(void *arg)
 {
-	float a1 = 1.0f;
-	float a2 = 1.5f;
-	float res = 0.0f;
+	VnzMemoryRange memIn;
+	VnzMemoryRange memOut;
+	VnzMemoryRange memStb;
+	DxtCompressionArg *dxtArg = *(DxtCompressionArg **)(SPRAM_MAILBOX_BASE);
 
-	while (a1 < 80.0f) {
-		res = powf_c(a1, a2);
-		a1 += 0.00001f;
+	unsigned char* input = dxtArg->src;
+	void *output = dxtArg->dst;
+
+	vnzCreateMemoryRange(&memOut, output, dxtArg->dstMemSize);
+	vnzMemoryRangeSyncWrite(&memOut);
+
+	vnzCreateMemoryRange(&memIn, input, dxtArg->srcMemSize);
+	vnzMemoryRangeSyncRead(&memIn);
+
+	vnzCreateMemoryRange(&memStb, dxtArg->stbDxtData, 4 * 1024);
+	vnzMemoryRangeSyncRead(&memStb);
+
+	output = memOut.paddrVnz;
+	input = memIn.paddrVnz;
+	*(void **)(SPRAM_USE_BASE) = memStb.paddrVnz;
+
+	for (int y = 0; y < dxtArg->height; y += 4) {
+		for (int x = 0; x < dxtArg->width; x += 4) {
+			unsigned char block[64];
+			unsigned char alpha[16];
+			for (int by = 0; by < 4; ++by) {
+				for (int bx = 0; bx < 4; ++bx) {
+					int ai = (by * 4) + bx;
+					int bi = ai * 4;
+					int xx = MIN(x + bx, dxtArg->width - 1);
+					int yy = MIN(y + by, dxtArg->height - 1);
+					int i = ((yy * dxtArg->width) + xx) * 4;
+					block[bi + 0] = input[i + 0];
+					block[bi + 1] = input[i + 1];
+					block[bi + 2] = input[i + 2];
+					block[bi + 3] = 0xFF;
+					alpha[ai] = input[i + 3];
+					if (dxtArg->format == FORMAT_DXT2 || dxtArg->format == FORMAT_DXT4) {
+						float am = (float)alpha[ai] / 0xFF;
+						block[bi + 0] *= am;
+						block[bi + 1] *= am;
+						block[bi + 2] *= am;
+					}
+				}
+			}
+
+			unsigned char chunk[16];
+			int chunkSize = 16;
+			switch (dxtArg->format) {
+			case FORMAT_DXT1:
+				stb_compress_dxt_block(chunk, block, 0, DXT_FLAGS);
+				chunkSize = 8;
+				break;
+			/*case FORMAT_DXT2:
+			case FORMAT_DXT3:
+				for (int i = 0; i < 8; ++i) {
+					unsigned char a0 = alpha[i * 2 + 0] / 17;
+					unsigned char a1 = alpha[i * 2 + 1] / 17;
+					chunk[i] = (a1 << 4) | a0;
+				}
+				stb_compress_dxt_block(chunk + 8, block, 0, DXT_FLAGS);
+				break;
+			case FORMAT_DXT4:
+			case FORMAT_DXT5:
+				stb_compress_bc4_block(chunk, alpha);
+				stb_compress_dxt_block(chunk + 8, block, 0, DXT_FLAGS);
+				break;*/
+			}
+			memcpy(output, chunk, chunkSize);
+			output += chunkSize;
+		}
 	}
+
+	vnzDeleteMemoryRangeWithSyncWrite(&memOut);
+	vnzDeleteMemoryRangeWithSyncRead(&memIn);
+	vnzDeleteMemoryRangeWithSyncRead(&memStb);
 
 	return;
 }
@@ -35,6 +128,8 @@ int main(void *pVThreadProcessingResource, void *pUserArg)
 {
 	int ret = 0;
 	VnzVThreadContext thrdCtx;
+
+	*(void **)(SPRAM_MAILBOX_BASE) = pUserArg;
 
 	thrdCtx = vnzCreateVThreadContext(1, pVThreadProcessingResource);
 
@@ -48,87 +143,7 @@ int main(void *pVThreadProcessingResource, void *pUserArg)
 	return 0;
 }
 
-// Impl from math_neon
-const float __powf_rng[2] = {
-	1.442695041f,
-	0.693147180f
-};
-
-const float __powf_lut[16] = {
-	-2.295614848256274, 	//p0	log
-	-2.470711633419806, 	//p4
-	-5.686926051100417, 	//p2
-	-0.165253547131978, 	//p6
-	+5.175912446351073, 	//p1
-	+0.844006986174912, 	//p5
-	+4.584458825456749, 	//p3
-	+0.014127821926000,		//p7
-	0.9999999916728642,		//p0	exp
-	0.04165989275009526, 	//p4
-	0.5000006143673624, 	//p2
-	0.0014122663401803872, 	//p6
-	1.000000059694879, 		//p1
-	0.008336936973260111, 	//p5
-	0.16666570253074878, 	//p3
-	0.00019578093328483123	//p7
-};
-
-float powf_c(float x, float n)
-{
-	float a, b, c, d, xx;
-	int m;
-
-	union {
-		float   f;
-		int 	i;
-	} r;
-
-	//extract exponent
-	r.f = x;
-	m = (r.i >> 23);
-	m = m - 127;
-	r.i = r.i - (m << 23);
-
-	//Taylor Polynomial (Estrins)
-	xx = r.f * r.f;
-	a = (__powf_lut[4] * r.f) + (__powf_lut[0]);
-	b = (__powf_lut[6] * r.f) + (__powf_lut[2]);
-	c = (__powf_lut[5] * r.f) + (__powf_lut[1]);
-	d = (__powf_lut[7] * r.f) + (__powf_lut[3]);
-	a = a + b * xx;
-	c = c + d * xx;
-	xx = xx * xx;
-	r.f = a + c * xx;
-
-	//add exponent
-	r.f = r.f + ((float)m) * __powf_rng[1];
-
-	r.f = r.f * n;
-
-
-	//Range Reduction:
-	m = (int)(r.f * __powf_rng[0]);
-	r.f = r.f - ((float)m) * __powf_rng[1];
-
-	//Taylor Polynomial (Estrins)
-	a = (__powf_lut[12] * r.f) + (__powf_lut[8]);
-	b = (__powf_lut[14] * r.f) + (__powf_lut[10]);
-	c = (__powf_lut[13] * r.f) + (__powf_lut[9]);
-	d = (__powf_lut[15] * r.f) + (__powf_lut[11]);
-	xx = r.f * r.f;
-	a = a + b * xx;
-	c = c + d * xx;
-	xx = xx * xx;
-	r.f = a + c * xx;
-
-	//multiply by 2 ^ m 
-	m = m << 23;
-	r.i = r.i + m;
-
-	return r.f;
-}
-
-/*void *vnzMemcpyToSpram(void *src, unsigned int size, unsigned int spramOffset)
+void *vnzMemcpyToSpram(void *src, unsigned int size, unsigned int spramOffset)
 {
 	if (spramOffset > SPRAM_MEMSIZE)
 		return 0;
@@ -142,4 +157,17 @@ void *vnzMemcpyFromSpram(void *dst, unsigned int size, unsigned int spramOffset)
 		return 0;
 
 	return memcpy(dst, VENEZIA_SPRAM_ADDR + spramOffset, size);
-}*/
+}
+
+void * memcpy(void *s1, const void *s2, unsigned int n)
+{
+	char * dest = (char *)s1;
+	const char * src = (const char *)s2;
+
+	while (n--)
+	{
+		*dest++ = *src++;
+	}
+
+	return s1;
+}
