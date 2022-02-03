@@ -13,10 +13,11 @@
 #define IS_SIZE_ALIGNED( sizeToTest, PowerOfTwo )  \
         (((sizeToTest) & ((PowerOfTwo) - 1)) == 0)
 
-#define DXT_FLAGS (STB_DXT_DITHER | STB_DXT_HIGHQUAL)
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define STB_DXT_IMPLEMENTATION
 #include "stb_dxt.h"
+
+#define DXT_FLAGS (STB_DXT_DITHER | STB_DXT_HIGHQUAL)
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
 typedef enum DDSFormat {
 	FORMAT_DXT1,

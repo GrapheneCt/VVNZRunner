@@ -44,26 +44,26 @@ typedef struct DxtCompressionArg {
 
 void myEntry(void *arg)
 {
-	VnzMemoryRange memIn;
-	VnzMemoryRange memOut;
-	VnzMemoryRange memStb;
+	VnzMemory memIn;
+	VnzMemory memOut;
+	VnzMemory memStb;
 	DxtCompressionArg *dxtArg = *(DxtCompressionArg **)(SPRAM_MAILBOX_BASE);
 
 	unsigned char* input = dxtArg->src;
 	void *output = dxtArg->dst;
 
-	vnzCreateMemoryRange(&memOut, output, dxtArg->dstMemSize);
-	vnzMemoryRangeSyncWrite(&memOut);
+	vnzMemoryCreate(&memOut, output, dxtArg->dstMemSize);
+	vnzMemoryOpenPrivate(&memOut);
 
-	vnzCreateMemoryRange(&memIn, input, dxtArg->srcMemSize);
-	vnzMemoryRangeSyncRead(&memIn);
+	vnzMemoryCreate(&memIn, input, dxtArg->srcMemSize);
+	vnzMemoryOpenProtected(&memIn);
 
-	vnzCreateMemoryRange(&memStb, dxtArg->stbDxtData, 4 * 1024);
-	vnzMemoryRangeSyncRead(&memStb);
+	vnzMemoryCreate(&memStb, dxtArg->stbDxtData, 4 * 1024);
+	vnzMemoryOpenProtected(&memStb);
 
-	output = memOut.paddrVnz;
-	input = memIn.paddrVnz;
-	*(void **)(SPRAM_USE_BASE) = memStb.paddrVnz;
+	output = memOut.vaddrVnz;
+	input = memIn.vaddrVnz;
+	*(void **)(SPRAM_USE_BASE) = memStb.vaddrVnz;
 
 	for (int y = 0; y < dxtArg->height; y += 4) {
 		for (int x = 0; x < dxtArg->width; x += 4) {
@@ -117,9 +117,9 @@ void myEntry(void *arg)
 		}
 	}
 
-	vnzDeleteMemoryRangeWithSyncWrite(&memOut);
-	vnzDeleteMemoryRangeWithSyncRead(&memIn);
-	vnzDeleteMemoryRangeWithSyncRead(&memStb);
+	vnzMemoryClosePrivate(&memOut);
+	vnzMemoryCloseProtected(&memIn);
+	vnzMemoryCloseProtected(&memStb);
 
 	return;
 }
@@ -131,11 +131,11 @@ int main(void *pVThreadProcessingResource, void *pUserArg)
 
 	*(void **)(SPRAM_MAILBOX_BASE) = pUserArg;
 
-	thrdCtx = vnzCreateVThreadContext(1, pVThreadProcessingResource);
+	thrdCtx = vnzVThreadCreateContext(1, pVThreadProcessingResource);
 
 	if (thrdCtx != 0) {
-		ret = vnzCreateStartVThread(thrdCtx, 0, myEntry, 0, 0, 0, 0);
-		vnzDeleteVThreadContext(thrdCtx);
+		ret = vnzVThreadExecute(thrdCtx, 0, myEntry, 0, 0, 0, 0);
+		vnzVThreadDeleteContext(thrdCtx);
 	}
 
 	*(int *)(SPRAM_MAILBOX_BASE) = VTHREAD_STATE_FINISHED;
