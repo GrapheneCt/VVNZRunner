@@ -17,4 +17,15 @@ Library: VVNZRunner function: vnzBridgeMapMemory
 Library: VVNZRunner function: vnzBridgeUnmapMemory
 Library: VVNZRunner function: vnzBridgeGetVeneziaExecClockFrequency
 Library: VVNZRunner function: vnzBridgeSetVeneziaExecClockFrequency
+Library: VVNZRunner function: vnzBridgeAllocUnmapMemory
+Library: VVNZRunner function: vnzBridgeFreeUnmapMemory
+
+Library: VVNZRunner function: sceCodecEngineWrapperOpenPublicMemory
+Library: VVNZRunner function: sceCodecEngineWrapperClosePublicMemory
+Library: VVNZRunner function: sceCodecEngineUnmapPAtoUserVA
+Library: VVNZRunner function: sceCodecEngineUnmapUserVAtoPA
+Library: VVNZRunner function: sceCodecEngineUnmapKernelVAtoUserVA
+Library: VVNZRunner function: sceCodecEngineUnmapUserVAtoKernelVA
+Library: VVNZRunner function: sceCodecEngineRegisterUnmapMemory
+Library: VVNZRunner function: sceCodecEngineUnregisterUnmapMemory
 Library: VVNZRunner function: sceCodecEnginePmonGetProcessorLoadExt

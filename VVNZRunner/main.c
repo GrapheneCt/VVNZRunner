@@ -10,7 +10,7 @@
 
 #include "common.h"
 #include "elf.h"
-#include "perf.h"
+#include "codec_engine_bridge.h"
 #include "memory.h"
 #include "vnz_wrapper.h"
 #include "include/vvnzrunner.h"
@@ -25,7 +25,6 @@ unsigned char s_injectCode[36] = {
 	0x9E, 0x00, 0x00, 0x93, 0x0F, 0x10, 0x07, 0x4B, 0x40, 0x6F, 0xBE, 0x10
 };
 
-
 static unsigned int s_requestedCodeOffset = 0;
 static unsigned int s_requestedCodeSize = 0;
 static void* s_requestedCodeBase = NULL;
@@ -35,6 +34,8 @@ static SceUID s_registeredPid = SCE_UID_INVALID_UID;
 static int *_vnzExecClockFrequency = NULL;
 static int targetExecClockFrequency = 166;
 
+static unsigned int s_userArgSize = 0;
+
 void _vnzDoReset()
 {
 	//Reset VENEZIA
@@ -42,21 +43,24 @@ void _vnzDoReset()
 	_sceVeneziaEventHandler(1, 0x1000e, NULL, NULL);
 }
 
-void _vnzCommBegin(SceCodecEngineWrapperRpcMemoryContext context, SceCodecEngineWrapperThunkArg *arg, void *memoryRegion)
+void _vnzCommBegin(SceCodecEngineWrapperRpcMemoryContext context, SceCodecEngineWrapperThunkArg *in, SceCodecEngineWrapperThunkArg *out)
 {
 	SceCodecEngineWrapperConvertOpt opt;
 	opt.flags = 1;
-	opt.size = COMM_ARG_SIZE;
+	opt.size = s_userArgSize;
 
-	*(void **)memoryRegion = arg->pVThreadProcessingResource;
-	*(void **)(memoryRegion + 0x8) = arg->userArg3;
-	*(void **)(memoryRegion + 0xC) = arg->userArg4;
+	out->pVThreadProcessingResource = in->pVThreadProcessingResource;
 
-	sceCodecEngineWrapperConvertVirtualToPhysical(context, arg->userArg2, COMM_ARG_SIZE, &opt);
+	/*
+	out->userArg3 = in->userArg3;
+	out->userArg4 = in->userArg4;
+	*/
+
+	sceCodecEngineWrapperConvertVirtualToPhysical(context, in->userArg2, s_userArgSize, &opt);
 	sceCodecEngineWrapperInitRpcMemory(context);
 	sceCodecEngineWrapperMemcpyChain(context);
 
-	*(void **)(memoryRegion + 0x4) = *(void **)((void*)context + 0x1C);
+	out->userArg2 = *(void **)((void*)context + 0x1C);
 }
 
 void _vnzCommEnd(SceCodecEngineWrapperRpcMemoryContext context)
@@ -126,7 +130,7 @@ int vnzBridgeExec(void *pUserArg, unsigned int userArgSize)
 	SceCodecEngineWrapperThunkArg thunkArg;
 	int ret = 0;
 	unsigned char hasUserArg = 0;
-	char userArg[COMM_ARG_SIZE];
+	char userArg[MAX_ARG_SIZE];
 	SceCodecEngineWrapperRpcMemoryCommBegin cbBegin = NULL;
 	SceCodecEngineWrapperRpcMemoryCommEnd cbEnd = NULL;
 
@@ -135,15 +139,18 @@ int vnzBridgeExec(void *pUserArg, unsigned int userArgSize)
 
 	memset(&thunkArg, 0, sizeof(SceCodecEngineWrapperThunkArg));
 
+	s_userArgSize = 0;
+
 	if (pUserArg) {
-		if (userArgSize > COMM_ARG_SIZE)
+		if (userArgSize > MAX_ARG_SIZE)
 			return SCE_ERROR_ERRNO_E2BIG;
 
-		memset(userArg, 0, sizeof(userArg));
 		sceKernelCopyFromUser(userArg, pUserArg, userArgSize);
 		cbBegin = _vnzCommBegin;
 		cbEnd = _vnzCommEnd;
 		thunkArg.userArg2 = userArg;
+
+		s_userArgSize = userArgSize;
 	}
 
 	ret = sceCodecEngineWrapperLockProcessSuspendCore();
@@ -252,6 +259,8 @@ int module_start(SceSize args, const void * argp)
 	module_get_offset(KERNEL_PID, info.modid, 0, 0x8C | 1, (uintptr_t *)&_sceVeneziaEventHandler);
 	module_get_offset(KERNEL_PID, info.modid, 0, 0x36EC | 1, (uintptr_t *)&_sceVeneziaGetProcessorLoad);
 	module_get_offset(KERNEL_PID, info.modid, 1, 0xBC, (uintptr_t *)&_vnzExecClockFrequency);
+	module_get_offset(KERNEL_PID, info.modid, 0, 0x161FC | 1, (uintptr_t *)&_sceCodecEngineAllocMemoryFromUnmapMemBlock);
+	module_get_offset(KERNEL_PID, info.modid, 0, 0x162FC | 1, (uintptr_t *)&_sceCodecEngineFreeMemoryFromUnmapMemBlock);
 
 	memset(&info, 0, sizeof(tai_module_info_t));
 	info.size = sizeof(tai_module_info_t);

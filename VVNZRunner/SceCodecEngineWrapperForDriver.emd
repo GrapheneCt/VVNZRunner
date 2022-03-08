@@ -15,3 +15,12 @@ Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperLockProce
 Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperMemcpyChain nidvalue: 0xD1F94D9D
 Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperInitRpcMemory nidvalue: 0x03EA6C2A
 Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperTermRpcMemory nidvalue: 0x07C53B4E
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperOpenPublicMemory nidvalue: 0x0F235F44
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperClosePublicMemory nidvalue: 0x26FAF6EC
+
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineUnmapPAtoUserVA nidvalue: 0xBCDCEA13
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineUnmapUserVAtoPA nidvalue: 0x6D41287F
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineUnmapKernelVAtoUserVA nidvalue: 0x744D4C3F
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineUnmapUserVAtoKernelVA nidvalue: 0x82E378BD
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineRegisterUnmapMemory nidvalue: 0xFBD4853E
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineUnregisterUnmapMemory nidvalue: 0xC5478DD5

@@ -26,7 +26,7 @@ typedef struct SceCodecEngineWrapperConvertOpt {
 	unsigned int size;
 } SceCodecEngineWrapperConvertOpt;
 
-typedef SceVoid(*SceCodecEngineWrapperRpcMemoryCommBegin)(SceCodecEngineWrapperRpcMemoryContext context, SceCodecEngineWrapperThunkArg *arg, void *memoryRegion);
+typedef SceVoid(*SceCodecEngineWrapperRpcMemoryCommBegin)(SceCodecEngineWrapperRpcMemoryContext context, SceCodecEngineWrapperThunkArg *in, SceCodecEngineWrapperThunkArg *out);
 typedef SceVoid(*SceCodecEngineWrapperRpcMemoryCommEnd)(SceCodecEngineWrapperRpcMemoryContext context);
 
 int sceCodecEngineWrapperCallGenericThunk(unsigned int id, SceCodecEngineWrapperThunkArg *arg, SceCodecEngineWrapperRpcMemoryCommBegin beginCallback, SceCodecEngineWrapperRpcMemoryCommEnd endCallback);
@@ -38,6 +38,18 @@ int sceCodecEngineWrapperConvertPhysicalToVirtual(SceCodecEngineWrapperRpcMemory
 int sceCodecEngineWrapperInitRpcMemory(SceCodecEngineWrapperRpcMemoryContext context);
 int sceCodecEngineWrapperMemcpyChain(SceCodecEngineWrapperRpcMemoryContext context);
 int sceCodecEngineWrapperTermRpcMemory(SceCodecEngineWrapperRpcMemoryContext context);
+
+int sceCodecEngineUnmapPAtoUserVA(SceUID pid, void *paddr, SceUIntVAddr *memory);
+int sceCodecEngineUnmapUserVAtoPA(SceUID pid, SceUIntVAddr memory, void **paddr);
+
+int sceCodecEngineUnmapKernelVAtoUserVA(SceUID pid, SceUIntVAddr kernelMemory, SceUIntVAddr *memory);
+int sceCodecEngineUnmapUserVAtoKernelVA(SceUID pid, SceUIntVAddr memory, SceUIntVAddr *kernelMemory);
+
+int sceCodecEngineRegisterUnmapMemory(SceUID pid, SceUIntVAddr memory, SceUInt32 size);
+int sceCodecEngineUnregisterUnmapMemory(SceUID pid, SceUIntVAddr memory, SceUInt32 size);
+
+void *sceCodecEngineWrapperOpenPublicMemory(void *paddr, SceUInt32 size);
+void *sceCodecEngineWrapperClosePublicMemory(void *vnzVaddr, SceUInt32 size);
 
 #ifdef __cplusplus
 }

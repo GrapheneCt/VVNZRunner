@@ -8,6 +8,8 @@ include(VitaDevelopmentSuite)
 enable_language(EMD)
 set(CMAKE_C_STANDARD 99)
 
+add_definitions(-DVVNZRUNNER_BUILD)
+
 add_compile_options(
   -Xdiag=0 -Xquit=2 -O3
 )
@@ -47,20 +49,21 @@ VDSuiteCreateStubs(imports_sysmem SceDebugLedForDriver.emd
     SceDebugLedForDriver_stub
 )
 
+VDSuiteCreateStubs(vitasdk_stubs lib.emd
+  LIBRARIES
+    VVNZRunner_vitasdk_stub
+  VitasdkStub
+)
+
 VDSuiteCreateStubs(stubs lib.emd
   LIBRARIES
     VVNZRunner_stub
 )
 
-VDSuiteCreateStubs(vitasdk_stubs lib.yml
-  LIBRARIES
-    VVNZRunner_vitasdk_stub
-)
-
 add_library("${PROJECT_NAME}.elf" MODULE
   main.c
   memory.c
-  perf.c
+  codec_engine_bridge.c
   lib.emd
 )
 
@@ -69,8 +72,6 @@ target_link_libraries("${PROJECT_NAME}.elf"
   SceSysmemForDriver_stub
   SceThreadmgrForDriver_stub
   SceSysclibForDriver_stub
-  ScePowerForDriver_stub
-  SceIofilemgrForDriver_stub
   SceProcEventForDriver_stub
   SceCpuForDriver_stub
   taihenModuleUtils_stub
