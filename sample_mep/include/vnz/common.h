@@ -1,0 +1,14 @@
+#ifndef _VENEZIA_COMMON_H
+#define _VENEZIA_COMMON_H
+
+#define VENEZIA_SPRAM_ADDR		0xF1840000
+#define VENEZIA_IMAGE_ADDR		0x40800000
+#define SPRAM_USE_OFFSET		0x1400
+
+#define GET_SPRAM_VALUE(x)		*(unsigned int *)(VENEZIA_SPRAM_ADDR + SPRAM_USE_OFFSET + x)
+
+#define GET_IMAGE_OFFSET(x)		(void *)(VENEZIA_IMAGE_ADDR + x)
+
+#define GET_FUNC_ADDR(x)		(void *)(GET_SPRAM_VALUE(0) + x)
+
+#endif /* _VENEZIA_VTHREAD_H */

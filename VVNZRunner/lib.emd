@@ -7,10 +7,6 @@ Library: VVNZRunner attr: syscall_export
 Library: VVNZRunner version: 1
 Library: VVNZRunner stubfile: "VVNZRunner_stub"
 Library: VVNZRunner nidsuffix: ""
-Library: VVNZRunner function: vnz_test_dump_image
-Library: VVNZRunner function: vnz_test_gate_enable
-Library: VVNZRunner function: vnz_test_gate_disable
-
 Library: VVNZRunner function: vnzBridgeInject
 Library: VVNZRunner function: vnzBridgeRestore
 Library: VVNZRunner function: vnzBridgeExec

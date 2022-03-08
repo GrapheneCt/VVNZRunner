@@ -42,6 +42,11 @@ VDSuiteCreateStubs(imports_sysroot SceSysrootForDriver.emd
     SceSysrootForDriver_stub
 )
 
+VDSuiteCreateStubs(imports_sysmem SceDebugLedForDriver.emd
+  LIBRARIES
+    SceDebugLedForDriver_stub
+)
+
 VDSuiteCreateStubs(stubs lib.emd
   LIBRARIES
     VVNZRunner_stub
@@ -54,6 +59,8 @@ VDSuiteCreateStubs(vitasdk_stubs lib.yml
 
 add_library("${PROJECT_NAME}.elf" MODULE
   main.c
+  memory.c
+  perf.c
   lib.emd
 )
 
@@ -71,6 +78,7 @@ target_link_libraries("${PROJECT_NAME}.elf"
   "${CMAKE_CURRENT_BINARY_DIR}/imports_lowio/libScePervasiveForDriver_stub.a"
   "${CMAKE_CURRENT_BINARY_DIR}/imports_sysroot/libSceSysrootForDriver_stub.a"
   "${CMAKE_CURRENT_BINARY_DIR}/imports_venezia/libSceCodecEngineWrapperForDriver_stub.a"
+  "${CMAKE_CURRENT_BINARY_DIR}/imports_sysmem/libSceDebugLedForDriver_stub.a"
 )
 
 VDSuiteSignElf("${PROJECT_NAME}.skprx" "${PROJECT_NAME}.elf" COMPRESS ON STRIP ON)

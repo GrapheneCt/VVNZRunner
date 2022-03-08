@@ -1,0 +1,8 @@
+emd: 1
+
+Library: SceDebugLedForDriver attr: auto_export
+Library: SceDebugLedForDriver version: 1
+Library: SceDebugLedForDriver stubfile: "SceDebugLedForDriver_stub"
+Library: SceDebugLedForDriver nidsuffix: ""
+Library: SceDebugLedForDriver libnamenid: 0x7BC05EAD
+Library: SceDebugLedForDriver function: sceKernelSetGPO nidvalue: 0x78E702D3

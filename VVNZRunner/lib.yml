@@ -19,7 +19,4 @@ modules:
           vnzBridgeRestore: 0x58DB369B
           vnzBridgeSetVeneziaExecClockFrequency: 0x79641F85
           vnzBridgeUnmapMemory: 0x41D0A32F
-          vnz_test_dump_image: 0x636890A1
-          vnz_test_gate_disable: 0x1B9C4264
-          vnz_test_gate_enable: 0x835C2B79
 

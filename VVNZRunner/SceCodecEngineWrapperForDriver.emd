@@ -13,3 +13,5 @@ Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperGetVThrea
 Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperIsProcessSuspended nidvalue: 0x7492DE05
 Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperLockProcessSuspendCore nidvalue: 0xCB8703D8
 Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperMemcpyChain nidvalue: 0xD1F94D9D
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperInitRpcMemory nidvalue: 0x03EA6C2A
+Library: SceCodecEngineWrapperForDriver function: sceCodecEngineWrapperTermRpcMemory nidvalue: 0x07C53B4E
