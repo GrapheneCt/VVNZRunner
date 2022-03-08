@@ -1,6 +1,8 @@
 # VVNZRunner
 
 Kernel plugin for PS Vita that provides API to run Toshiba MeP code on Venezia.
+It supports execution of MeP ELFs directly from userland-allocated memblock.
+
 Original idea from PS Vita Henkaku wiki [article](https://wiki.henkaku.xyz/vita/Venezia).
 
 VVNZRunner provides safe way to run MeP code on Venezia processor and functions to transfer data from and to Venezia SPRAM.
