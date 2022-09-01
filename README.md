@@ -27,6 +27,6 @@ Check sample Makefile for flags used to compile MeP code for Venezia.
 
 # Usage notes
 
-- Using global variables in MeP elf (or anything else that will end up in data segment) is not allowed. Workaround for this is to pass custom memblock to Venezia that will be used to store static variables
+- Due to the address restrictions any global variables in MeP code should be used with GET_SYMBOL_ADDR() macro. That also includes operations with function addresses.
 
 
