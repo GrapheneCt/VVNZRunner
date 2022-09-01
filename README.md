@@ -19,11 +19,11 @@ Venezia uses specific memory management system for all external memory. You must
 
 # Sample
 
-Full sample coming soon
+Sample blits some text to screen on Venezia side and displays it on ARM side
 
 To compile MeP code use [mepsdk](https://github.com/TeamMolecule/mepsdk).
 
-Check CMakeLists for flags used to compile MeP code for Venezia.
+Check sample Makefile for flags used to compile MeP code for Venezia.
 
 # Usage notes
 
