@@ -13,18 +13,13 @@
 #define ALIGN(x, a)	(((x) + ((a) - 1)) & ~((a) - 1))
 
 #define IS_SIZE_ALIGNED( sizeToTest, PowerOfTwo )  \
-        (((sizeToTest) & ((PowerOfTwo) - 1)) == 0)
-
+		(((sizeToTest) & ((PowerOfTwo) - 1)) == 0)
 
 #define VTHREAD_NUM				1
 #define PERF_PMON_GRAIN_USEC	1000
 #define PERF_PRINTF_GRAIN_USEC	200000
 
-#define SPRAM_SAFE_OFFSET		0x1404
-#define SPRAM_VTHREAD_MAILBOX_OFFSET	0x1408
-
-#define VTHREAD_STATE_READY		1
-#define VTHREAD_STATE_FINISHED	2
+#define WORKMEM_SIZE			ALIGN(960 * 544 * 4, SCE_KERNEL_256KiB)
 
 #define sceCodecEnginePmonStop _sceCodecEnginePmonStop
 #define sceCodecEnginePmonReset _sceCodecEnginePmonReset
@@ -37,28 +32,82 @@ int sceCodecEnginePmonGetProcessorLoad(SceCodecEnginePmonProcessorLoad *res)
 	return _sceCodecEnginePmonGetProcessorLoad(res, &scheck);
 }
 
+#define VNZ_CMD_NONE			0
+#define VNZ_CMD_DEBUG_FONT_DRAW	1
+
+typedef struct VnzCallArg {
+	unsigned int cmd;
+	unsigned int width;
+	unsigned int height;
+	void *addr;
+	int x;
+	int y;
+	int lastError;
+	char text[400];
+} VnzCallArg;
+
 static SceUID vthreadWrapId[VTHREAD_NUM];
+static void *vnzWorkMem = NULL;
 
 void myEntryArm(void *arg)
 {
 	return;
 }
 
+static int targY = 0;
+
 int VThreadInterface(SceSize args, void *argp)
 {
-	unsigned int arg = 0x5FD6A;
+	VnzCallArg arg;
+	int err = 0;
+
+	arg.cmd = VNZ_CMD_DEBUG_FONT_DRAW;
+	arg.addr = vnzWorkMem;
+	arg.width = 960;
+	arg.height = 544;
+	arg.x = 0;
+	arg.y = targY += 64;
+	snprintf(arg.text, sizeof(arg.text), "Testing SceBSOD font on VNZ: %d", targY);
+
 #ifdef TEST_ARM
 	SceUInt32 waitbeg = sceKernelGetProcessTimeLow();
 	myEntryArm(0);
 	sceClibPrintf("myEntryArm time: %u\n", sceKernelGetProcessTimeLow() - waitbeg);
 #else
 	SceUInt32 waitbeg = sceKernelGetProcessTimeLow();
-	int err = vnzBridgeExec(&arg, sizeof(int));
+	//err = vnzBridgeExec(&arg, sizeof(VnzCallArg));
+	test();
 	sceClibPrintf("vnzBridgeExec time: %u\n", sceKernelGetProcessTimeLow() - waitbeg);
-	sceClibPrintf("vnzBridgeExec: 0x%X\n", err);
+	//sceClibPrintf("vnzBridgeExec: 0x%X\n", err);
+	//sceClibPrintf("last error: 0x%X\n", arg.lastError);
 #endif
-
 	return sceKernelExitDeleteThread(0);
+}
+
+void test()
+{
+	VnzCallArg arg;
+
+	arg.cmd = VNZ_CMD_DEBUG_FONT_DRAW;
+	arg.addr = vnzWorkMem;
+	arg.width = 960;
+	arg.height = 544;
+	arg.x = 0;
+	arg.y = 0;
+	snprintf(arg.text, sizeof(arg.text), "Start VENEZIA print test");
+
+	int err = vnzBridgeExec(&arg, sizeof(VnzCallArg));
+
+	sceClibPrintf("vnzBridgeExec: 0x%X\n", err);
+	sceClibPrintf("last error: 0x%X\n", arg.lastError);
+
+	arg.y = 32;
+	snprintf(arg.text, sizeof(arg.text), "In progress...");
+	vnzBridgeExec(&arg, sizeof(VnzCallArg));
+
+	arg.y = 64;
+	snprintf(arg.text, sizeof(arg.text), "Done!");
+	vnzBridgeExec(&arg, sizeof(VnzCallArg));
 }
 
 SceUID spawnVThread()
@@ -89,7 +138,7 @@ int loadMepElf(const char *path, void **vaddr, unsigned int *mbSize)
 
 	*mbSize = ALIGN(mepCodeFileSize, SCE_KERNEL_1MiB);
 
-	SceUID codeMemUID = sceKernelAllocMemBlock("SceVeneziaElfExec", SCE_KERNEL_MEMBLOCK_TYPE_USER_MAIN_PHYCONT_NC_RW, *mbSize, NULL);
+	SceUID codeMemUID = sceKernelAllocMemBlock("SceVeneziaElfExec", SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW, *mbSize, NULL);
 	if (codeMemUID <= 0) {
 		sceIoClose(fd);
 		return codeMemUID;
@@ -136,16 +185,6 @@ int main()
 	SceUInt64 oldTimeMeasureUsec = 0;
 	SceUInt64 waitEndUsec = 0;
 	SceCodecEnginePmonProcessorLoadExt perf;
-	
-	/*err = vnzBridgeMapMemory(codeMem, codeMemSize, &codeMemVnzPaddr, 1);
-	sceClibPrintf("vnzBridgeMapMemory: 0x%X\n", err);*/
-	
-	//Reset spram area that we will use to communicate with Venezia
-	sceClibPrintf("Reset spram area that we will use to communicate with Venezia\n");
-
-	sceClibMemset(blank, 0, sizeof(blank));
-	err = vnzBridgeMemcpyToSpram(blank, sizeof(blank), SPRAM_SAFE_OFFSET);
-	sceClibPrintf("vnzBridgeMemcpyToSpram: 0x%X\n", err);
 
 	// Inject custom MeP code
 	sceClibPrintf("Inject custom MeP code\n");
@@ -155,6 +194,27 @@ int main()
 
 	err = vnzBridgeInject(codeMem, codeMemSize);
 	sceClibPrintf("vnzBridgeInject: 0x%X\n", err);
+	
+	void *workMem;
+	SceUID workMemUID = sceKernelAllocMemBlock("SceVeneziaElfExecTest", SCE_KERNEL_MEMBLOCK_TYPE_USER_CDRAM_RW, WORKMEM_SIZE, NULL);
+	err = sceKernelGetMemBlockBase(workMemUID, &workMem);
+	sceClibPrintf("sceKernelGetMemBlockBase: 0x%X\n", err);
+
+	//memset(workMem, 0, WORKMEM_SIZE);
+
+	err = vnzBridgeMapMemory(workMem, WORKMEM_SIZE, &vnzWorkMem, 1);
+	sceClibPrintf("vnzBridgeMapMemory: 0x%X\n", err);
+
+	/*SceUID vaid = sceCodecEngineOpenUnmapMemBlock(workMem, WORKMEM_SIZE);
+	sceClibPrintf("sceCodecEngineOpenUnmapMemBlock: 0x%X\n", vaid);
+
+	err = vnzBridgeAllocUnmapMemory(vaid, SCE_KERNEL_1MiB, 0x100, &vnzWorkMem);
+	sceClibPrintf("vnzBridgeAllocUnmapMemory: 0x%X\n", err);
+	sceClibPrintf("vnz mem: 0x%X\n", vnzWorkMem);
+
+	err = vnzBridgeFreeUnmapMemory(vaid, vnzWorkMem, SCE_KERNEL_1MiB);
+	sceClibPrintf("vnzBridgeFreeUnmapMemory: 0x%X\n", err);*/
+	
 
 	// Spawn V-Threads
 	sceClibPrintf("Spawn V-Threads, total num: %d\n", VTHREAD_NUM);
@@ -200,11 +260,6 @@ repeat_wait:
 		sceClibPrintf("\n-----------------------------------------------------------------\n");
 		oldTimeMeasureUsec = currentTimeMeasureUsec;
 		sceClibPrintf("clock: %d\n", vnzBridgeGetVeneziaExecClockFrequency());
-
-		int val = 0;
-		vnzBridgeMemcpyFromSpram(&val, sizeof(val), SPRAM_SAFE_OFFSET + 4);
-		sceClibPrintf("SPRAM value: %d\n", val);
-
 	}
 
 	for (int i = 0; i < VTHREAD_NUM; i++) {
@@ -221,19 +276,23 @@ repeat_wait:
 
 	sceClibPrintf("-------------------- END: Venezia test --------------------\n\n");
 
-	//vnzBridgeUnmapMemory(codeMem, codeMemSize, 1);
+	vnzBridgeUnmapMemory(workMem, WORKMEM_SIZE, 1);
 
 	/*
+	SceUID file = sceIoOpen("ux0:data/dump.bin", SCE_O_WRONLY | SCE_O_CREAT, 0666);
+	sceIoWrite(file, workMem, 0x10000);
+	sceIoClose(file);
+	*/
+	
 	SceDisplayFrameBuf fb;
 	fb.size = sizeof(SceDisplayFrameBuf);
-	fb.base = dispMem;
+	fb.base = workMem;
 	fb.width = 960;
 	fb.height = 544;
 	fb.pitch = 960;
 	fb.pixelformat = SCE_DISPLAY_PIXELFORMAT_A8B8G8R8;
 
 	sceDisplaySetFrameBuf(&fb, SCE_DISPLAY_UPDATETIMING_NEXTVSYNC);
-	*/
 
 	vnzBridgeRestore();
 

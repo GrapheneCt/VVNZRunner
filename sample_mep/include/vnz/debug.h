@@ -7,7 +7,7 @@
 
 static inline void vnzDebugSetGPO(unsigned int value)
 {
-	GET_SPRAM_VALUE(8) = value;
+	*(unsigned int *)(VENEZIA_SPRAM_ADDR + SPRAM_USE_OFFSET + 4) = value;
 }
 
 #endif /* _VENEZIA_DEBUG_H */

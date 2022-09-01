@@ -47,53 +47,53 @@ typedef struct VnzMemory {
 	void *vaddrVnz;
 } VnzMemory;
 
-static inline void vnzMemoryCreate(VnzMemory *memory, void *paddr, unsigned int size)
+static __attribute__((noinline)) void vnzMemoryCreate(VnzMemory *memory, void *paddr, unsigned int size)
 {
 	void(*_vnzMemoryCreate)(VnzMemory *memory, void *paddr, unsigned int size);
 	_vnzMemoryCreate = GET_IMAGE_OFFSET(0x5FC14);
 	_vnzMemoryCreate(memory, paddr, size);
 }
 
-static inline void vnzMemoryOpenPublic(VnzMemory *memory)
+static __attribute__((noinline)) void *vnzMemoryOpenPublic(VnzMemory *memory)
 {
-	void(*_vnzMemoryOpenPublic)(VnzMemory *memory);
+	void*(*_vnzMemoryOpenPublic)(VnzMemory *memory);
 	_vnzMemoryOpenPublic = GET_IMAGE_OFFSET(0x5FC22);
-	_vnzMemoryOpenPublic(memory);
+	return _vnzMemoryOpenPublic(memory);
 }
 
-static inline void vnzMemoryClosePublic(VnzMemory *memory)
+static __attribute__((noinline)) void *vnzMemoryClosePublic(VnzMemory *memory)
 {
-	void(*_vnzMemoryClosePublic)(VnzMemory *memory);
+	void*(*_vnzMemoryClosePublic)(VnzMemory *memory);
 	_vnzMemoryClosePublic = GET_IMAGE_OFFSET(0x5FC52);
-	_vnzMemoryClosePublic(memory);
+	return _vnzMemoryClosePublic(memory);
 }
 
-static inline void vnzMemoryOpenPrivate(VnzMemory *memory)
+static __attribute__((noinline)) void *vnzMemoryOpenPrivate(VnzMemory *memory)
 {
-	void(*_vnzMemoryOpenPrivate)(VnzMemory *memory);
+	void*(*_vnzMemoryOpenPrivate)(VnzMemory *memory);
 	_vnzMemoryOpenPrivate = GET_IMAGE_OFFSET(0x5FC82);
-	_vnzMemoryOpenPrivate(memory);
+	return _vnzMemoryOpenPrivate(memory);
 }
 
-static inline void vnzMemoryClosePrivate(VnzMemory *memory)
+static __attribute__((noinline)) void *vnzMemoryClosePrivate(VnzMemory *memory)
 {
-	void(*_vnzMemoryClosePrivate)(VnzMemory *memory);
+	void*(*_vnzMemoryClosePrivate)(VnzMemory *memory);
 	_vnzMemoryClosePrivate = GET_IMAGE_OFFSET(0x5FCBC);
-	_vnzMemoryClosePrivate(memory);
+	return _vnzMemoryClosePrivate(memory);
 }
 
-static inline void vnzMemoryOpenProtected(VnzMemory *memory)
+static __attribute__((noinline)) void *vnzMemoryOpenProtected(VnzMemory *memory)
 {
-	void(*_vnzMemoryOpenProtected)(VnzMemory *memory);
+	void*(*_vnzMemoryOpenProtected)(VnzMemory *memory);
 	_vnzMemoryOpenProtected = GET_IMAGE_OFFSET(0x5FCF6);
-	_vnzMemoryOpenProtected(memory);
+	return _vnzMemoryOpenProtected(memory);
 }
 
-static inline void vnzMemoryCloseProtected(VnzMemory *memory)
+static __attribute__((noinline)) void *vnzMemoryCloseProtected(VnzMemory *memory)
 {
-	void(*_vnzMemoryCloseProtected)(VnzMemory *memory);
+	void*(*_vnzMemoryCloseProtected)(VnzMemory *memory);
 	_vnzMemoryCloseProtected = GET_IMAGE_OFFSET(0x5FD30);
-	_vnzMemoryCloseProtected(memory);
+	return _vnzMemoryCloseProtected(memory);
 }
 
 /* Ext memory management */
@@ -111,26 +111,27 @@ typedef struct VnzExtMemory {
 	unsigned int size;
 } VnzExtMemory;
 
-static inline int vnzExtMemoryCreate(VnzExtMemory *memory)
+static __attribute__((noinline)) int vnzExtMemoryCreate(VnzExtMemory *memory)
 {
 	int(*_vnzExtMemoryCreate)(VnzExtMemory *memory);
 	_vnzExtMemoryCreate = GET_IMAGE_OFFSET(0x11ED0);
 	return _vnzExtMemoryCreate(memory);
 }
 
-static inline int vnzExtMemoryOpen(VnzExtMemory *memory, bool isManagedMemory, unsigned int mode, void *addr, unsigned int size)
+static __attribute__((noinline)) int vnzExtMemoryOpen(VnzExtMemory *memory, bool isManagedMemory, unsigned int mode, void *addr, unsigned int size)
 {
 	int(*_vnzExtMemoryOpen)(VnzExtMemory *memory, bool isManagedMemory, unsigned int mode, void *addr, unsigned int size);
 	_vnzExtMemoryOpen = GET_IMAGE_OFFSET(0x11EEC);
 	return _vnzExtMemoryOpen(memory, isManagedMemory, mode, addr, size);
 }
 
-static inline int vnzExtMemoryClose(VnzExtMemory *memory, void **addr)
+static __attribute__((noinline)) int vnzExtMemoryClose(VnzExtMemory *memory, void **addr)
 {
 	int(*_vnzExtMemoryClose)(VnzExtMemory *memory, void **addr);
 	_vnzExtMemoryClose = GET_IMAGE_OFFSET(0x11FAE);
 	return _vnzExtMemoryClose(memory, addr);
 }
+
 
 /*static inline void *mallocMaybe(void *mem, unsigned int size)
 {

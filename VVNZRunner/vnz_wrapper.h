@@ -12,32 +12,45 @@
 extern "C" {
 #endif
 
-typedef void* SceCodecEngineWrapperRpcMemoryContext;
+typedef void* SceVeneziaRpcMemoryContext;
 
-typedef struct SceCodecEngineWrapperThunkArg {
+typedef struct SceVeneziaThunkArg {
 	void *pVThreadProcessingResource;
 	void *userArg2;
 	void *userArg3;
 	void *userArg4;
-} SceCodecEngineWrapperThunkArg;
+} SceVeneziaThunkArg;
 
-typedef struct SceCodecEngineWrapperConvertOpt {
+typedef struct SceVeneziaConvertOpt {
 	int flags;
 	unsigned int size;
-} SceCodecEngineWrapperConvertOpt;
+} SceVeneziaConvertOpt;
 
-typedef SceVoid(*SceCodecEngineWrapperRpcMemoryCommBegin)(SceCodecEngineWrapperRpcMemoryContext context, SceCodecEngineWrapperThunkArg *in, SceCodecEngineWrapperThunkArg *out);
-typedef SceVoid(*SceCodecEngineWrapperRpcMemoryCommEnd)(SceCodecEngineWrapperRpcMemoryContext context);
+typedef SceVoid(*SceVeneziaRpcMemoryCommBegin)(SceVeneziaRpcMemoryContext context, SceVeneziaThunkArg *in, SceVeneziaThunkArg *out);
+typedef SceVoid(*SceVeneziaRpcMemoryCommEnd)(SceVeneziaRpcMemoryContext context);
 
-int sceCodecEngineWrapperCallGenericThunk(unsigned int id, SceCodecEngineWrapperThunkArg *arg, SceCodecEngineWrapperRpcMemoryCommBegin beginCallback, SceCodecEngineWrapperRpcMemoryCommEnd endCallback);
-void *sceCodecEngineWrapperGetVThreadProcessingResource(unsigned int key);
-int sceCodecEngineWrapperLockProcessSuspendCore();
-int sceCodecEngineWrapperUnlockProcessSuspendCore();
-int sceCodecEngineWrapperConvertVirtualToPhysical(SceCodecEngineWrapperRpcMemoryContext context, void *vaddr, unsigned int size, SceCodecEngineWrapperConvertOpt *opt);
-int sceCodecEngineWrapperConvertPhysicalToVirtual(SceCodecEngineWrapperRpcMemoryContext context);
-int sceCodecEngineWrapperInitRpcMemory(SceCodecEngineWrapperRpcMemoryContext context);
-int sceCodecEngineWrapperMemcpyChain(SceCodecEngineWrapperRpcMemoryContext context);
-int sceCodecEngineWrapperTermRpcMemory(SceCodecEngineWrapperRpcMemoryContext context);
+int sceVeneziaRpcCallGenericThunk(unsigned int id, SceVeneziaThunkArg *arg, SceVeneziaRpcMemoryCommBegin beginCallback, SceVeneziaRpcMemoryCommEnd endCallback);
+int sceVeneziaRpcCallGenericThunk2(unsigned int id, int arg1, int arg2);
+void *sceVeneziaGetVThreadProcessingResource(unsigned int key);
+
+int sceVeneziaLockProcessSuspend();
+int sceVeneziaUnlockProcessSuspend();
+
+int sceVeneziaConvertVirtualToPhysical(SceVeneziaRpcMemoryContext context, void *vaddr, unsigned int size, SceVeneziaConvertOpt *opt);
+int sceVeneziaConvertPhysicalToVirtual(SceVeneziaRpcMemoryContext context);
+int sceVeneziaInitRpcMemory(SceVeneziaRpcMemoryContext context);
+int sceVeneziaMemcpyChain(SceVeneziaRpcMemoryContext context);
+int sceVeneziaTermRpcMemory(SceVeneziaRpcMemoryContext context);
+
+#define SCE_VENEZIA_HEAP_IMAGE_0	0 // First allocation paddr = 0x40963900, heap size = 0x80600
+#define SCE_VENEZIA_HEAP_IMAGE		1 // First allocation paddr = 0x40A45700, heap size = 0x1BAA00
+#define SCE_VENEZIA_HEAP_VRAM		2 // First allocation paddr = 0x20000000, heap size = 0x8000100
+
+void *sceVeneziaHeapAlloc(unsigned int heapType, int size);
+void sceVeneziaHeapFree(unsigned int heapType, void *addr, int size);
+
+void *sceVeneziaConvertVirtualToPhysicalForVenezia(void *vaddr);
+void *sceVeneziaConvertPhysicalToVirtualForVenezia(void *paddr);
 
 int sceCodecEngineUnmapPAtoUserVA(SceUID pid, void *paddr, SceUIntVAddr *memory);
 int sceCodecEngineUnmapUserVAtoPA(SceUID pid, SceUIntVAddr memory, void **paddr);
@@ -48,8 +61,8 @@ int sceCodecEngineUnmapUserVAtoKernelVA(SceUID pid, SceUIntVAddr memory, SceUInt
 int sceCodecEngineRegisterUnmapMemory(SceUID pid, SceUIntVAddr memory, SceUInt32 size);
 int sceCodecEngineUnregisterUnmapMemory(SceUID pid, SceUIntVAddr memory, SceUInt32 size);
 
-void *sceCodecEngineWrapperOpenPublicMemory(void *paddr, SceUInt32 size);
-void *sceCodecEngineWrapperClosePublicMemory(void *vnzVaddr, SceUInt32 size);
+void *sceVeneziaOpenPublicMemory(void *paddr, SceUInt32 size);
+void *sceVeneziaClosePublicMemory(void *vnzVaddr, SceUInt32 size);
 
 #ifdef __cplusplus
 }

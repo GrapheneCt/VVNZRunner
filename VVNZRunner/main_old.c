@@ -24,7 +24,6 @@ int(*_sceVeneziaEventHandler)(int resume, int eventid, void *args, void *opt);
 typedef struct SceVeneziaCommParam {
 	unsigned int requestedCodeBase;
 	unsigned int requestedCodeOffset;
-	unsigned int requestedCodeSize;
 } SceVeneziaCommParam;
 
 static unsigned char s_injectCode[24] = {
@@ -34,9 +33,6 @@ static unsigned char s_injectCode[24] = {
 
 static unsigned int s_requestedCodeSize = 0;
 static void* s_requestedCodeBaseVaddr = NULL;
-static void* s_requestedCodeBase = NULL;
-
-static SceUID s_blockMapId = SCE_UID_INVALID_UID;
 
 static void *s_commHeapVaddr = NULL;
 static void *s_commHeapPaddr = NULL;
@@ -61,15 +57,14 @@ int vnzBridgeRestore()
 
 	vnzBridgeUnmapMemory(s_requestedCodeBaseVaddr, s_requestedCodeSize, 0);
 
+	sceVeneziaHeapFree(SCE_VENEZIA_HEAP_IMAGE, s_commHeapVaddr, COMM_HEAP_SIZE);
+	s_commHeapVaddr = NULL;
+	s_commHeapPaddr = NULL;
+
 	unsigned int state = __builtin_mrc(15, 0, 13, 0, 3);
 	__builtin_mcr(15, 0, 13, 0, 3, state << 16);
 	_vnzDoReset();
 	__builtin_mcr(15, 0, 13, 0, 3, state);
-
-	ret = sceKernelUserUnmap(s_blockMapId);
-	s_blockMapId = SCE_UID_INVALID_UID;
-	s_commHeapVaddr = NULL;
-	s_commHeapPaddr = NULL;
 
 	s_registeredPid = SCE_UID_INVALID_UID;
 
@@ -80,6 +75,7 @@ int vnzBridgeInject(const void *mepElfMemblockAddr, unsigned int mepElfMemblockS
 {
 	int ret = 0;
 	SceUInt32 mepCodeFileSize = 0;
+	void* requestedCodeBase = NULL;
 	unsigned int requestedCodeOffset = 0;
 	Elf32_Ehdr *hdr = NULL;
 	Elf32_Shdr *shdr = NULL;
@@ -94,9 +90,16 @@ int vnzBridgeInject(const void *mepElfMemblockAddr, unsigned int mepElfMemblockS
 	if (s_registeredPid != SCE_UID_INVALID_UID)
 		return SCE_ERROR_ERRNO_EALREADY;
 
-	s_blockMapId = sceKernelUserMap("SceVeneziaMepExec", 3, mepElfMemblockAddr, mepElfMemblockSize, &kernelPage, &kernelSize, &kernelOffset);
-	if (s_blockMapId <= 0)
-		return s_blockMapId;
+	s_commHeapVaddr = sceVeneziaHeapAlloc(SCE_VENEZIA_HEAP_IMAGE, COMM_HEAP_SIZE);
+	s_commHeapPaddr = sceVeneziaConvertVirtualToPhysicalForVenezia(s_commHeapVaddr);
+	if (!s_commHeapVaddr || !s_commHeapPaddr)
+		return SCE_ERROR_ERRNO_ENOMEM;
+
+	sceKernelDcacheCleanRange_1(s_commHeapVaddr, COMM_HEAP_SIZE);
+
+	blockMapId = sceKernelUserMap("SceVeneziaMepExec", 3, mepElfMemblockAddr, mepElfMemblockSize, &kernelPage, &kernelSize, &kernelOffset);
+	if (blockMapId <= 0)
+		return blockMapId;
 
 	kernelPage = (void*)(((uintptr_t)kernelPage) + kernelOffset);
 
@@ -124,33 +127,30 @@ int vnzBridgeInject(const void *mepElfMemblockAddr, unsigned int mepElfMemblockS
 	s_requestedCodeSize = mepElfMemblockSize;
 	s_requestedCodeBaseVaddr = mepElfMemblockAddr;
 
-	ret = _sceAvcodecMapMemoryToVenezia(&s_requestedCodeBase, s_requestedCodeBaseVaddr, s_requestedCodeSize, SCE_KERNEL_MEMORY_REF_PERM_KERN_R, 1, 1);
+	ret = _sceAvcodecMapMemoryToVenezia(&requestedCodeBase, s_requestedCodeBaseVaddr, s_requestedCodeSize, SCE_KERNEL_MEMORY_REF_PERM_KERN_R, 1, 1);
 	if (ret < 0) {
 		goto return_with_unmap;
 	}
 
-	// Fix required paddr to VRAM base until there's better solution
-	if (s_requestedCodeBase != 0x20000000) {
-		ret = SCE_ERROR_ERRNO_EFAULT;
+	if (!IS_SIZE_ALIGNED((unsigned int)requestedCodeBase, SCE_KERNEL_64KiB)) {
+		ret = SCE_ERROR_ERRNO_EINVAL;
 		vnzBridgeUnmapMemory(s_requestedCodeBaseVaddr, s_requestedCodeSize, 0);
 		goto return_with_unmap;
 	}
 
 	/*
-	if (!IS_SIZE_ALIGNED((unsigned int)s_requestedCodeBase, SCE_KERNEL_64KiB)) {
-		ret = SCE_ERROR_ERRNO_EFAULT;
-		vnzBridgeUnmapMemory(s_requestedCodeBaseVaddr, s_requestedCodeSize, 0);
-		goto return_with_unmap;
-	}
+	_vnzPatcherSetOffset((unsigned short)((unsigned int)s_requestedCodeBase >> 16));
+	_vnzPatcherPatchMepCode(kernelPage + shdr->sh_offset, shdr->sh_size);
 	*/
 
-	s_commHeapVaddr = kernelPage + COMM_HEAP_OFFSET;
-	s_commHeapPaddr = s_requestedCodeBase + COMM_HEAP_OFFSET;
+	sceKernelUserUnmap(blockMapId);
+	if (ret < 0) {
+		return ret;
+	}
 
 	SceVeneziaCommParam *commParam = (SceVeneziaCommParam *)s_commHeapVaddr;
-	commParam->requestedCodeBase = s_requestedCodeBase;
+	commParam->requestedCodeBase = requestedCodeBase;
 	commParam->requestedCodeOffset = requestedCodeOffset;
-	commParam->requestedCodeSize = s_requestedCodeSize;
 
 	s_registeredPid = sceKernelGetProcessId();
 
@@ -158,10 +158,12 @@ int vnzBridgeInject(const void *mepElfMemblockAddr, unsigned int mepElfMemblockS
 
 return_with_unmap:
 
+	sceKernelUserUnmap(blockMapId);
+
 	return ret;
 }
 
-int vnzBridgeExecCore(void *pUserArg, unsigned int userArgSize, int useCoreSuspend)
+int vnzBridgeExec(void *pUserArg, unsigned int userArgSize)
 {
 	int ret = 0;
 	SceVeneziaThunkArg thunkArg;
@@ -179,11 +181,9 @@ int vnzBridgeExecCore(void *pUserArg, unsigned int userArgSize, int useCoreSuspe
 	else
 		thunkArg.userArg2 = 0;
 
-	if (useCoreSuspend) {
-		ret = sceVeneziaLockProcessSuspend();
-		if (ret < 0)
-			return ret;
-	}
+	ret = sceVeneziaLockProcessSuspend();
+	if (ret < 0)
+		return ret;
 
 	thunkArg.pVThreadProcessingResource = sceVeneziaGetVThreadProcessingResource(0);
 	thunkArg.userArg3 = userArgSize;
@@ -193,35 +193,13 @@ int vnzBridgeExecCore(void *pUserArg, unsigned int userArgSize, int useCoreSuspe
 
 	ret = sceVeneziaRpcCallGenericThunk(THUNK_CMD_ID, &thunkArg, NULL, NULL);
 
-	if (useCoreSuspend) {
-		sceVeneziaUnlockProcessSuspend();
-	}
+	sceVeneziaUnlockProcessSuspend();
 
 	if (pUserArg) {
 		sceKernelCopyToUser(pUserArg, s_commHeapVaddr + sizeof(SceVeneziaCommParam), userArgSize);
 	}
 
 	return ret;
-}
-
-int vnzBridgeExec(void *pUserArg, unsigned int userArgSize)
-{
-	return vnzBridgeExecCore(pUserArg, userArgSize, 1);
-}
-
-int vnzBridgeExecNoSuspend(void *pUserArg, unsigned int userArgSize)
-{
-	return vnzBridgeExecCore(pUserArg, userArgSize, 0);
-}
-
-int vnzLockProcessSuspend()
-{
-	return sceVeneziaLockProcessSuspend();
-}
-
-int vnzUnlockProcessSuspend()
-{
-	return sceVeneziaUnlockProcessSuspend();
 }
 
 int vnzBridgeGetVeneziaExecClockFrequency()
@@ -282,7 +260,7 @@ int _vnzDebugProxyThread(SceSize args, void *argp)
 
 	while (1) {
 
-		currGPO = *(unsigned int *)(VADDR_VENEZIA_SPRAM + SPRAM_USE_OFFSET + 4);
+		currGPO = *(unsigned int *)(VADDR_VENEZIA_SPRAM + SPRAM_USE_OFFSET + 8);
 
 		if (currGPO != s_oldGPO) {
 			sceKernelSetGPO(currGPO);
@@ -335,7 +313,7 @@ int module_start(SceSize args, const void * argp)
 	_vnzDoReset();
 
 #ifdef ENABLE_GPO_PROXY
-	*(unsigned int *)(VADDR_VENEZIA_SPRAM + SPRAM_USE_OFFSET + 4) = 0;
+	*(unsigned int *)(VADDR_VENEZIA_SPRAM + SPRAM_USE_OFFSET + 8) = 0;
 	SceUID thid = sceKernelCreateThread("SceVeneziaDebugProxy", _vnzDebugProxyThread, SCE_KERNEL_DEFAULT_PRIORITY, SCE_KERNEL_4KiB, 0, 0, NULL);
 	sceKernelStartThread(thid, 0, NULL);
 #endif

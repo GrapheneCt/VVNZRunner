@@ -10,6 +10,9 @@ Library: VVNZRunner nidsuffix: ""
 Library: VVNZRunner function: vnzBridgeInject
 Library: VVNZRunner function: vnzBridgeRestore
 Library: VVNZRunner function: vnzBridgeExec
+Library: VVNZRunner function: vnzBridgeExecNoSuspend
+Library: VVNZRunner function: vnzLockProcessSuspend
+Library: VVNZRunner function: vnzUnlockProcessSuspend
 Library: VVNZRunner function: vnzBridgeGetSpramValue
 Library: VVNZRunner function: vnzBridgeMemcpyToSpram
 Library: VVNZRunner function: vnzBridgeMemcpyFromSpram
@@ -20,8 +23,8 @@ Library: VVNZRunner function: vnzBridgeSetVeneziaExecClockFrequency
 Library: VVNZRunner function: vnzBridgeAllocUnmapMemory
 Library: VVNZRunner function: vnzBridgeFreeUnmapMemory
 
-Library: VVNZRunner function: sceCodecEngineWrapperOpenPublicMemory
-Library: VVNZRunner function: sceCodecEngineWrapperClosePublicMemory
+Library: VVNZRunner function: sceVeneziaOpenPublicMemory
+Library: VVNZRunner function: sceVeneziaClosePublicMemory
 Library: VVNZRunner function: sceCodecEngineUnmapPAtoUserVA
 Library: VVNZRunner function: sceCodecEngineUnmapUserVAtoPA
 Library: VVNZRunner function: sceCodecEngineUnmapKernelVAtoUserVA

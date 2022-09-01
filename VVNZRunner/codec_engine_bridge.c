@@ -31,15 +31,15 @@ int vnzBridgeAllocUnmapMemory(SceUID uid, SceUInt32 size, SceUInt32 alignment, v
 	if (!memory)
 		return SCE_ERROR_ERRNO_EINVAL;
 
-	ret = sceCodecEngineRegisterUnmapMemory(SCE_KERNEL_PROCESS_ID_SELF, memory, size);
+	/*ret = sceCodecEngineRegisterUnmapMemory(SCE_KERNEL_PROCESS_ID_SELF, memory, size);
 	if (ret < 0)
-		goto error;
+		goto error;*/
 
 	ret = sceCodecEngineUnmapUserVAtoPA(SCE_KERNEL_PROCESS_ID_SELF, memory, &pa);
 	if (ret < 0)
 		goto error;
 
-	retMem = sceCodecEngineWrapperOpenPublicMemory(pa, size);
+	retMem = sceVeneziaOpenPublicMemory(pa, size);
 	if (!retMem) {
 		ret = SCE_ERROR_ERRNO_EINVAL;
 		goto error;
@@ -51,7 +51,7 @@ int vnzBridgeAllocUnmapMemory(SceUID uid, SceUInt32 size, SceUInt32 alignment, v
 
 error:
 
-	sceCodecEngineUnregisterUnmapMemory(SCE_KERNEL_PROCESS_ID_SELF, memory, size);
+	//sceCodecEngineUnregisterUnmapMemory(SCE_KERNEL_PROCESS_ID_SELF, memory, size);
 	_sceCodecEngineFreeMemoryFromUnmapMemBlock(uid, memory);
 
 	return ret;
@@ -66,7 +66,7 @@ int vnzBridgeFreeUnmapMemory(SceUID uid, void *vnzVaddr, SceUInt32 size)
 	if (!vnzVaddr || !size)
 		return SCE_ERROR_ERRNO_EINVAL;
 
-	pa = sceCodecEngineWrapperClosePublicMemory(vnzVaddr, size);
+	pa = sceVeneziaClosePublicMemory(vnzVaddr, size);
 	if (!pa) {
 		ret = SCE_ERROR_ERRNO_EINVAL;
 		return ret;
@@ -76,9 +76,9 @@ int vnzBridgeFreeUnmapMemory(SceUID uid, void *vnzVaddr, SceUInt32 size)
 	if (ret < 0)
 		return ret;
 
-	ret = sceCodecEngineUnregisterUnmapMemory(SCE_KERNEL_PROCESS_ID_SELF, memory, size);
+	/*ret = sceCodecEngineUnregisterUnmapMemory(SCE_KERNEL_PROCESS_ID_SELF, memory, size);
 	if (ret < 0)
-		return ret;
+		return ret;*/
 
 	ret = _sceCodecEngineFreeMemoryFromUnmapMemBlock(uid, memory);
 
@@ -131,17 +131,17 @@ int _sceCodecEngineRegisterUnmapMemory(SceUIntVAddr memory, SceUInt32 size)
 	return sceCodecEngineRegisterUnmapMemory(SCE_KERNEL_PROCESS_ID_SELF, memory, size);
 }
 
-int _sceCodecEngineUnregisterUnmapMemory(SceUID pid, SceUIntVAddr memory, SceUInt32 size)
+int _sceCodecEngineUnregisterUnmapMemory(SceUIntVAddr memory, SceUInt32 size)
 {
 	return sceCodecEngineUnregisterUnmapMemory(SCE_KERNEL_PROCESS_ID_SELF, memory, size);
 }
 
-void *_sceCodecEngineWrapperOpenPublicMemory(void *paddr, SceUInt32 size)
+void *_sceVeneziaOpenPublicMemory(void *paddr, SceUInt32 size)
 {
-	return sceCodecEngineWrapperOpenPublicMemory(paddr, size);
+	return sceVeneziaOpenPublicMemory(paddr, size);
 }
 
-void *_sceCodecEngineWrapperClosePublicMemory(void *vnzVaddr, SceUInt32 size)
+void *_sceVeneziaClosePublicMemory(void *vnzVaddr, SceUInt32 size)
 {
-	return sceCodecEngineWrapperClosePublicMemory(vnzVaddr, size);
+	return sceVeneziaClosePublicMemory(vnzVaddr, size);
 }

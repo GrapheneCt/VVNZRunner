@@ -1,8 +1,8 @@
-#include "common.h"
+#include <vnz/common.h>
 
-int _start(void *pVThreadProcessingResource, void *pUserArg, int unused1, int unused2)
+int _start(void *pVThreadProcessingResource, void *pUserArg, unsigned int userArgSize, SceVeneziaCommParam *pCommParam)
 {
-	int(*main)(void *pVThreadProcessingResource, void *pUserArg);
-	main = *(void **)(VENEZIA_SPRAM_ADDR + SPRAM_USE_OFFSET) + *(unsigned int *)(VENEZIA_SPRAM_ADDR + SPRAM_USE_OFFSET + sizeof(int));
-	return main(pVThreadProcessingResource, pUserArg);
+	int(*main)(void *pVThreadProcessingResource, void *pUserArg, unsigned int userArgSize, SceVeneziaCommParam *pCommParam);
+	main = (void *)(pCommParam->requestedCodeBase) + pCommParam->requestedCodeOffset;
+	return main(pVThreadProcessingResource, pUserArg, userArgSize, pCommParam);
 }

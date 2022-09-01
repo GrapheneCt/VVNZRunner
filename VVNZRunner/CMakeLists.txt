@@ -74,6 +74,7 @@ target_link_libraries("${PROJECT_NAME}.elf"
   SceSysclibForDriver_stub
   SceProcEventForDriver_stub
   SceCpuForDriver_stub
+  SceIofilemgrForDriver_stub
   taihenModuleUtils_stub
   taihenForKernel_stub
   "${CMAKE_CURRENT_BINARY_DIR}/imports_lowio/libScePervasiveForDriver_stub.a"
