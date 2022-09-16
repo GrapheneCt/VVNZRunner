@@ -7,7 +7,7 @@
 #include <ctrl.h>
 #include <display.h>
 
-#include "../../vvnzrunner.h"
+#include "../../../VVNZRunner/include/vvnzrunner.h"
 #include "util.h"
 
 #define ALIGN(x, a)	(((x) + ((a) - 1)) & ~((a) - 1))
