@@ -19,14 +19,14 @@ Venezia uses specific memory management system for all external memory. You must
 
 # Sample
 
-Full sample coming soon
+Sample blits some text to screen on Venezia side and displays it on ARM side
 
 To compile MeP code use [mepsdk](https://github.com/TeamMolecule/mepsdk).
 
-Check CMakeLists for flags used to compile MeP code for Venezia.
+Check sample Makefile for flags used to compile MeP code for Venezia.
 
 # Usage notes
 
-- Using global variables in MeP elf (or anything else that will end up in data segment) is not allowed. Workaround for this is to pass custom memblock to Venezia that will be used to store static variables
+- Due to the address restrictions any global variables in MeP code should be used with GET_SYMBOL_ADDR() macro. That also includes operations with function addresses.
 
 
