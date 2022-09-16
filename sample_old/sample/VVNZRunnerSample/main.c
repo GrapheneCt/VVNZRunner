@@ -101,13 +101,13 @@ void test()
 	sceClibPrintf("vnzBridgeExec: 0x%X\n", err);
 	sceClibPrintf("last error: 0x%X\n", arg.lastError);
 
-	arg.y = 32;
+	/*arg.y = 32;
 	snprintf(arg.text, sizeof(arg.text), "In progress...");
 	vnzBridgeExec(&arg, sizeof(VnzCallArg));
 
 	arg.y = 64;
 	snprintf(arg.text, sizeof(arg.text), "Done!");
-	vnzBridgeExec(&arg, sizeof(VnzCallArg));
+	vnzBridgeExec(&arg, sizeof(VnzCallArg));*/
 }
 
 SceUID spawnVThread()

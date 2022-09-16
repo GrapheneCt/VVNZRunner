@@ -15,7 +15,7 @@
 #include "vnz_wrapper.h"
 #include "include/vvnzrunner.h"
 
-#define ENABLE_GPO_PROXY
+//#define ENABLE_GPO_PROXY
 
 #define sceKernelDcacheCleanRange_1 sceKernelCpuDcacheAndL2WritebackRange
 
@@ -31,6 +31,14 @@ static unsigned char s_injectCode[24] = {
 	0xC0, 0x6F, 0x1A, 0x7B, 0x4E, 0xC9, 0x04, 0x00, 0x4E, 0x00, 0x06, 0x4B,
 	0x00, 0x99, 0x0F, 0x10, 0x07, 0x4B, 0x40, 0x6F, 0xBE, 0x10, 0x00, 0x00
 };
+
+/*
+static unsigned char s_injectExcpHandlerCode[28] = {
+	0x21, 0xC3, 0x84, 0xF1, 0x34, 0xC3, 0x08, 0x14, 0x4B, 0x72, 0x3A, 0x02,
+	0x19, 0xE0, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x02, 0x70, 0x02, 0x70
+};
+*/
 
 static unsigned int s_requestedCodeSize = 0;
 static void* s_requestedCodeBaseVaddr = NULL;
@@ -331,6 +339,18 @@ int module_start(SceSize args, const void * argp)
 	//Inject code loader
 	*(unsigned int *)(VADDR_VENEZIA_IMAGE + THUNK_PTR_INJECT_ADDR) = THUNK_PTR_INJECT_DST;
 	memcpy(VADDR_VENEZIA_IMAGE + INJECT_CODE_BASE_OFFSET, s_injectCode, sizeof(s_injectCode));
+
+	//Inject exception handlers
+	/*
+	*(unsigned int *)(VADDR_VENEZIA_IMAGE + RI_EXCP_OFFSET) = EXCP_INJECT_JUMP;
+	*(unsigned int *)(VADDR_VENEZIA_IMAGE + ZDIV_EXCP_OFFSET) = EXCP_INJECT_JUMP;
+	*(unsigned int *)(VADDR_VENEZIA_IMAGE + BRK_EXCP_OFFSET) = EXCP_INJECT_JUMP;
+	*(unsigned int *)(VADDR_VENEZIA_IMAGE + SWI_EXCP_OFFSET) = EXCP_INJECT_JUMP;
+	*(unsigned int *)(VADDR_VENEZIA_IMAGE + DSP_EXCP_OFFSET) = EXCP_INJECT_JUMP;
+	*(unsigned int *)(VADDR_VENEZIA_IMAGE + COP_EXCP_OFFSET) = EXCP_INJECT_JUMP;
+
+	memcpy(VADDR_VENEZIA_IMAGE + EXCP_CODE_BASE_OFFSET, s_injectExcpHandlerCode, sizeof(s_injectExcpHandlerCode));
+	*/
 
 	_vnzDoReset();
 
