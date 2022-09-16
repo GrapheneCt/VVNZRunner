@@ -75,11 +75,11 @@ int renderThread(int a1, int a2, int a3, int a4)
 
 	if ((button & SCE_CTRL_RIGHT) == SCE_CTRL_RIGHT)
 		*(int *)GET_SYMBOL_ADDR(s_fontX) += 1;
-	else if ((button & SCE_CTRL_LEFT) == SCE_CTRL_LEFT)
+	if ((button & SCE_CTRL_LEFT) == SCE_CTRL_LEFT)
 		*(int *)GET_SYMBOL_ADDR(s_fontX) -= 1;
-	else if ((button & SCE_CTRL_UP) == SCE_CTRL_UP)
+	if ((button & SCE_CTRL_UP) == SCE_CTRL_UP)
 		*(int *)GET_SYMBOL_ADDR(s_fontY) -= 1;
-	else if ((button & SCE_CTRL_DOWN) == SCE_CTRL_DOWN)
+	if ((button & SCE_CTRL_DOWN) == SCE_CTRL_DOWN)
 		*(int *)GET_SYMBOL_ADDR(s_fontY) += 1;
 
 	if ((button & SCE_CTRL_CROSS) == SCE_CTRL_CROSS)
